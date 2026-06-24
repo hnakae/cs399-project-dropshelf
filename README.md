@@ -36,3 +36,21 @@ Push the branch to the remote repo:
 git push -u origin branch-name
 
 The -u flag sets up tracking so future pushes on that branch only need git push.
+
+## Git Tags (milestones)
+
+Create a tag:
+git tag tag-name              # lightweight tag
+git tag -a tag-name -m "message"  # annotated tag (recommended)
+
+Push the tag to the remote:
+git push origin tag-name
+
+For example, to tag the current commit on your sprint-1 branch:
+git tag -a v1.0 -m "Sprint 1 release"
+git push origin v1.0
+
+Other useful tag commands:
+git tag                # list all tags
+git tag -d tag-name    # delete a local tag
+git push origin --delete tag-name  # delete a remote tag
