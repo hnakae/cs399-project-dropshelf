@@ -1,5 +1,23 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+DropShelf is a single-creator storefront: a profile page, a product listing, and Stripe Checkout for buying one item at a time.
+
+## Environment variables
+
+Fill in `.env.local` (already gitignored):
+
+```
+STRIPE_SECRET_KEY=       # test-mode secret key from https://dashboard.stripe.com/test/apikeys
+STRIPE_WEBHOOK_SECRET=   # from `stripe listen --forward-to localhost:3000/api/webhooks/stripe`
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+```
+
+To test the webhook locally, install the [Stripe CLI](https://docs.stripe.com/stripe-cli) and run:
+
+```bash
+stripe listen --forward-to localhost:3000/api/webhooks/stripe
+```
+
 ## Getting Started
 
 First, run the development server:
