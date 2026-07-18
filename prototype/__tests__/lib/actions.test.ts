@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { products } from "@/lib/data";
+import type { Product } from "@/lib/data";
 
-const { create, redirect } = vi.hoisted(() => ({
+const { create, redirect, getProductById } = vi.hoisted(() => ({
   create: vi.fn(),
   redirect: vi.fn(),
+  getProductById: vi.fn(),
 }));
 
 vi.mock("@/lib/stripe", () => ({
@@ -14,9 +15,18 @@ vi.mock("@/lib/stripe", () => ({
 
 vi.mock("next/navigation", () => ({ redirect }));
 
+vi.mock("@/lib/data", () => ({ getProductById }));
+
 import { createCheckoutSession } from "@/lib/actions";
 
-const [product] = products;
+const product: Product = {
+  id: "tide-mug",
+  title: "Tidepool Mug",
+  description:
+    "A hand-thrown stoneware mug glazed in layered blues and greens, each one a little different from the last.",
+  priceInCents: 3200,
+  imageUrl: "https://picsum.photos/seed/dropshelf-product-1/600/600",
+};
 
 describe("createCheckoutSession", () => {
   const originalSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
@@ -25,6 +35,10 @@ describe("createCheckoutSession", () => {
     process.env.NEXT_PUBLIC_SITE_URL = "http://localhost:3000";
     create.mockReset();
     redirect.mockReset();
+    getProductById.mockReset();
+    getProductById.mockImplementation(async (id: string) =>
+      id === product.id ? product : undefined
+    );
   });
 
   afterEach(() => {
@@ -55,6 +69,11 @@ describe("createCheckoutSession", () => {
       success_url:
         "http://localhost:3000/checkout/success?session_id={CHECKOUT_SESSION_ID}",
       cancel_url: "http://localhost:3000",
+      metadata: {
+        productId: product.id,
+        quantity: "1",
+        unitPriceInCents: String(product.priceInCents),
+      },
     });
     expect(redirect).toHaveBeenCalledWith(
       "https://checkout.stripe.com/session_abc"

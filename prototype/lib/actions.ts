@@ -6,7 +6,7 @@ import { stripe } from "./stripe";
 import { getBaseUrl } from "./utils";
 
 export async function createCheckoutSession(productId: string) {
-  const product = getProductById(productId);
+  const product = await getProductById(productId);
 
   if (!product) {
     throw new Error(`Unknown product: ${productId}`);
@@ -32,6 +32,11 @@ export async function createCheckoutSession(productId: string) {
     ],
     success_url: `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: baseUrl,
+    metadata: {
+      productId: product.id,
+      quantity: "1",
+      unitPriceInCents: String(product.priceInCents),
+    },
   });
 
   if (!session.url) {
