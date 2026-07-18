@@ -1,27 +1,60 @@
-import { describe, expect, it } from "vitest";
-import { getProductById, products } from "@/lib/data";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-describe("products", () => {
-  it("has unique, non-empty ids and positive prices", () => {
-    const ids = products.map((product) => product.id);
+const { getDb } = vi.hoisted(() => ({ getDb: vi.fn() }));
 
-    expect(products.length).toBeGreaterThan(0);
-    expect(new Set(ids).size).toBe(ids.length);
-    for (const product of products) {
-      expect(product.id).not.toBe("");
-      expect(product.priceInCents).toBeGreaterThan(0);
-    }
+vi.mock("@/lib/db", () => ({ getDb }));
+
+import { getProductById, getProducts, type Product } from "@/lib/data";
+
+const products: Product[] = [
+  {
+    id: "tide-mug",
+    title: "Tidepool Mug",
+    description: "A hand-thrown stoneware mug.",
+    priceInCents: 3200,
+    imageUrl: "https://picsum.photos/seed/dropshelf-product-1/600/600",
+  },
+  {
+    id: "desert-bowl",
+    title: "Desert Light Bowl",
+    description: "A wide serving bowl.",
+    priceInCents: 5800,
+    imageUrl: "https://picsum.photos/seed/dropshelf-product-2/600/600",
+  },
+];
+
+function mockSelectFrom(rows: Product[]) {
+  const where = vi.fn().mockResolvedValue(rows);
+  const from = Object.assign(Promise.resolve(rows), { where });
+  const select = vi.fn().mockReturnValue({ from: vi.fn().mockReturnValue(from) });
+  getDb.mockReturnValue({ select });
+  return { where };
+}
+
+beforeEach(() => {
+  getDb.mockReset();
+});
+
+describe("getProducts", () => {
+  it("returns every product row from the database", async () => {
+    mockSelectFrom(products);
+
+    await expect(getProducts()).resolves.toEqual(products);
   });
 });
 
 describe("getProductById", () => {
-  it("returns the matching product for a known id", () => {
-    expect(getProductById("tide-mug")).toEqual(
-      products.find((product) => product.id === "tide-mug")
-    );
+  it("returns the matching product when the query finds one row", async () => {
+    const { where } = mockSelectFrom(products);
+    where.mockResolvedValue([products[0]]);
+
+    await expect(getProductById("tide-mug")).resolves.toEqual(products[0]);
   });
 
-  it("returns undefined for an unknown id", () => {
-    expect(getProductById("does-not-exist")).toBeUndefined();
+  it("returns undefined when the query finds no rows", async () => {
+    const { where } = mockSelectFrom(products);
+    where.mockResolvedValue([]);
+
+    await expect(getProductById("does-not-exist")).resolves.toBeUndefined();
   });
 });
