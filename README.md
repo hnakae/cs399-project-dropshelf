@@ -54,7 +54,7 @@ Sprint 1 deliverables — project definition:
 - [x] Project vision drafted (`docs/sprint-1-definition/project-vision.md`)
 - [x] Requirements defined (`docs/sprint-1-definition/requirements.md`)
 - [x] Initial architecture sketched (`docs/sprint-1-definition/architecture.md`)
-- [x] AI contribution documented (`AI_Contribution.md`)
+- [x] AI contribution documented (`docs/sprint-1-definition/AI_Contribution.md`)
 
 No working code yet — prototype begins in Sprint 2.
 
@@ -155,7 +155,7 @@ Resolved in Sprint 3 (previously listed here as deferred):
 - [docs/sprint-3-persistence/architecture.md](docs/sprint-3-persistence/architecture.md) — architecture updated for the persistence layer (database, schema, webhook writes)
 - [docs/sprint-3-persistence/manual-verification.md](docs/sprint-3-persistence/manual-verification.md) — end-to-end verification of a real Stripe payment persisting to Postgres
 - [docs/sprint-3-persistence/ai-implementation-review.md](docs/sprint-3-persistence/ai-implementation-review.md) — AI's role, what was accepted/rejected/directed, and post-review verification
-- [AI_Contribution.md](AI_Contribution.md) — how AI was used in Sprint 1
+- [docs/sprint-1-definition/AI_Contribution.md](docs/sprint-1-definition/AI_Contribution.md) — how AI was used in Sprint 1
 
 ## Setup Notes
 
