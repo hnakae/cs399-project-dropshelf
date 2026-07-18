@@ -1,10 +1,17 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { ProductCard } from "@/components/product-card";
-import { products } from "@/lib/data";
+import type { Product } from "@/lib/data";
 import { formatPrice } from "@/lib/utils";
 
-const [product] = products;
+const product: Product = {
+  id: "tide-mug",
+  title: "Tidepool Mug",
+  description:
+    "A hand-thrown stoneware mug glazed in layered blues and greens, each one a little different from the last.",
+  priceInCents: 3200,
+  imageUrl: "https://picsum.photos/seed/dropshelf-product-1/600/600",
+};
 
 describe("ProductCard", () => {
   it("shows the product's title, description, and formatted price", () => {

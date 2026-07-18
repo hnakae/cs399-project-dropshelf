@@ -1,8 +1,10 @@
 import { CreatorProfile } from "@/components/creator-profile";
 import { ProductCard } from "@/components/product-card";
-import { creator, products } from "@/lib/data";
+import { creator, getProducts } from "@/lib/data";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const products = await getProducts();
+
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-6 py-12 sm:px-10 sm:py-16">
       <CreatorProfile creator={creator} />
