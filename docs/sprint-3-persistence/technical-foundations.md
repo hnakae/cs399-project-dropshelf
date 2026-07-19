@@ -269,3 +269,62 @@ Remember: This week is about understanding persistence and data modeling, not be
     5. You protected against duplicate webhook deliveries with onConflictDoNothing on stripe_checkout_session_id. Is that sufficient on its own, or is there a timing scenario — two requests hitting your server for the same event at nearly the same instant — that this doesn't actually cover? What would you need to check to find out?
     6. creator is still a hardcoded object, not a database row. You've defended that as "not worth it at one creator." What's the specific trigger — the exact thing that would have to change about the product — that would flip that decision?
     7. You're on Neon Postgres via the Vercel Marketplace integration. If you had to move this project off Vercel next month, what happens to your order history? Is your data actually portable, or did the provisioning path couple you to something harder to leave than plain Postgres would be?
+
+---week 5---
+
+Architecture Evolution
+Week 5 Technical Foundations: Persistence Strategies and Architecture Evolution
+Learn how software engineers evaluate different persistence technologies and architectural approaches before adding unnecessary complexity.
+
+How to use this page: Read each topic, understand why it matters, then use the suggested AI prompt to explore the topic in more depth and apply it to your own project. The goal is to strengthen your engineering judgment, not simply generate more code.
+
+1. Choosing the Right Persistence Technology
+Why it matters: Good software engineers choose technologies because they solve a problem, not because they are popular. Different projects have different persistence needs.
+
+Suggested AI prompt:
+
+    Compare JSON files, SQLite, PostgreSQL, and MongoDB for my project. Explain the strengths, weaknesses, and engineering tradeoffs of each without assuming that one choice is always best.
+
+2. SQL Compared with NoSQL
+Why it matters: Different database technologies organize data differently. Understanding the tradeoffs helps you evaluate AI-generated recommendations.
+
+Suggested AI prompt:
+
+    Compare relational SQL databases with document-oriented NoSQL databases using my project as the example. Explain when each approach is appropriate and what tradeoffs I should consider.
+
+3. What Is an ORM?
+Why it matters: Object-Relational Mappers (ORMs) allow software to work with database records using programming language objects rather than writing SQL directly. They simplify many common tasks but also introduce tradeoffs.
+
+Suggested AI prompt:
+
+    Explain Object-Relational Mappers using my project as the example. Compare writing SQL directly with using an ORM, and explain when each approach is appropriate.
+
+4. Architecture Evolution
+Why it matters: Software architecture changes as projects grow. Sprint 3 often introduces new responsibilities such as persistence or integration that should be reflected in your architecture documentation.
+
+Suggested AI prompt:
+
+    Review my current architecture and identify how it should evolve after adding persistence or integration. Explain what responsibilities have changed and what should remain stable.
+
+5. Keeping Complexity Under Control
+Why it matters: Every new technology adds complexity. Good engineering often means deciding what not to build yet.
+
+Suggested AI prompt:
+
+    Review my current project and identify any unnecessary complexity. Suggest simpler alternatives that still satisfy the Sprint 3 goals without reducing the educational value of the project.
+
+6. Reviewing AI-Generated Code
+Why it matters: As projects become larger, AI-generated code becomes more difficult to evaluate. Software engineers must review generated code for correctness, maintainability, and alignment with project goals.
+
+Suggested AI prompt:
+
+    Review this persistence or database code as a senior software engineer. Identify unnecessary complexity, maintenance concerns, hidden assumptions, and questions I should answer before accepting the implementation.
+
+7. Thinking Beyond Sprint 3
+Why it matters: Sprint 4 will focus on quality, verification, testing, and maintainability. The decisions you make during Sprint 3 will influence how easy those improvements become.
+
+Suggested AI prompt:
+
+    Based on my current Sprint 3 implementation, identify the quality improvements I should plan for Sprint 4. Focus on testing, maintainability, refactoring, and verification rather than new features.
+
+Remember: Sprint 3 is still about expanding your project thoughtfully. Understanding the engineering tradeoffs behind persistence choices is more valuable than memorizing framework-specific details.
