@@ -102,8 +102,7 @@ it worked:
 
 ## Engineering responsibility statement
 
-All final decisions — SQL over NoSQL, Drizzle over Prisma, the Marketplace provisioning
-path, metadata-based order correlation, and what to defer to Sprint 4 — were mine,
+All final decisions — SQL over NoSQL, Drizzle over Prisma, and what to defer to Sprint 4 — were mine,
 made after AI presented the tradeoffs rather than by taking its first recommendation.
 AI implemented the schema, the migration, the webhook logic, and the tests faster than
 I would have alone, and in this review pass it caught a real environment gap (the stale
