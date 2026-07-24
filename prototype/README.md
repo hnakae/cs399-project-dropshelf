@@ -11,6 +11,7 @@ STRIPE_SECRET_KEY=       # test-mode secret key from https://dashboard.stripe.co
 STRIPE_WEBHOOK_SECRET=   # from `stripe listen --forward-to localhost:3000/api/webhooks/stripe`
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 DATABASE_URL=            # Postgres connection string (Neon, via Vercel Marketplace)
+ORDERS_VIEW_PASSWORD=    # HTTP Basic Auth password for /orders (username is "orders")
 ```
 
 `DATABASE_URL` and friends (`PGHOST`, `PGUSER`, etc.) are provisioned automatically once
@@ -49,6 +50,15 @@ Three tables: `products` (replaces the old hardcoded array in `lib/data.ts`), `o
 and `order_items` (one order has many items; each item references a product). See
 [`../docs/sprint-3-persistence/architecture.md`](../docs/sprint-3-persistence/architecture.md)
 for the schema and the reasoning behind the SQL-over-NoSQL and Drizzle-over-Prisma calls.
+
+## Order history
+
+`/orders` lists every persisted order and its line items, read from Postgres on every
+request (not cached — see `docs/sprint-3-persistence/updates/orders-view.md`). It's
+gated by HTTP Basic Auth (username `orders`, password `ORDERS_VIEW_PASSWORD` from
+`.env.local`) since the app has no user-account system — see
+`docs/sprint-3-persistence/updates/orders-view-auth-gate.md` for why a shared-secret
+gate was used instead of a full auth provider.
 
 ## Testing
 
