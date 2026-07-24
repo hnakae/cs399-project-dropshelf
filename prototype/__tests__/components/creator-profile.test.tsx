@@ -4,7 +4,7 @@ import { CreatorProfile } from "@/components/creator-profile";
 import type { Creator } from "@/lib/data";
 
 const creator: Creator = {
-  name: "Mira Alvarez",
+  name: "Hiro Nakae",
   bio: "Ceramic artist making small-batch, wheel-thrown pottery.",
   imageUrl: "https://picsum.photos/seed/dropshelf-creator/400/400",
 };
