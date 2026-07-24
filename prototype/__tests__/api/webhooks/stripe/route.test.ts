@@ -1,3 +1,4 @@
+import { StringChunk, type SQL } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { constructEvent, getDb } = vi.hoisted(() => ({
@@ -14,7 +15,6 @@ vi.mock("@/lib/stripe", () => ({
 vi.mock("@/lib/db", () => ({ getDb }));
 
 import { POST } from "@/app/api/webhooks/stripe/route";
-import { orderItems, orders } from "@/lib/db/schema";
 
 function makeRequest({
   body = "{}",
@@ -29,21 +29,25 @@ function makeRequest({
   });
 }
 
-function mockDb({ orderReturning = [{ id: 1 }] as { id: number }[] } = {}) {
-  const orderItemsValues = vi.fn().mockResolvedValue(undefined);
-  const returning = vi.fn().mockResolvedValue(orderReturning);
-  const onConflictDoNothing = vi.fn().mockReturnValue({ returning });
-  const ordersValues = vi.fn().mockReturnValue({ onConflictDoNothing });
+function mockDb() {
+  const execute = vi.fn().mockResolvedValue(undefined);
+  getDb.mockReturnValue({ execute });
+  return { execute };
+}
 
-  const insert = vi.fn((table: unknown) => {
-    if (table === orders) return { values: ordersValues };
-    if (table === orderItems) return { values: orderItemsValues };
-    throw new Error("Unexpected table passed to db.insert");
-  });
-
-  getDb.mockReturnValue({ insert });
-
-  return { insert, ordersValues, onConflictDoNothing, orderItemsValues };
+/** Pulls the literal SQL text and the interpolated values out of a `sql` template query,
+ * so tests can assert on them without a real database. */
+function describeQuery(query: SQL) {
+  const text = query.queryChunks
+    .filter((chunk): chunk is StringChunk => chunk instanceof StringChunk)
+    .map((chunk) => chunk.value.join(""))
+    .join("")
+    .replace(/\s+/g, " ")
+    .trim();
+  const params = query.queryChunks.filter(
+    (chunk) => !(chunk instanceof StringChunk)
+  );
+  return { text, params };
 }
 
 describe("POST /api/webhooks/stripe", () => {
@@ -94,7 +98,7 @@ describe("POST /api/webhooks/stripe", () => {
   });
 
   it("persists an order and order item for a verified checkout.session.completed event", async () => {
-    const { ordersValues, orderItemsValues } = mockDb();
+    const { execute } = mockDb();
     constructEvent.mockReturnValue({
       type: "checkout.session.completed",
       data: {
@@ -116,44 +120,26 @@ describe("POST /api/webhooks/stripe", () => {
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ received: true });
-    expect(ordersValues).toHaveBeenCalledWith({
-      stripeCheckoutSessionId: "cs_test_123",
-      status: "paid",
-      customerEmail: "buyer@example.com",
-      amountTotalInCents: 3200,
-    });
-    expect(orderItemsValues).toHaveBeenCalledWith({
-      orderId: 1,
-      productId: "tide-mug",
-      quantity: 1,
-      unitPriceInCents: 3200,
-    });
+    expect(execute).toHaveBeenCalledTimes(1);
+    const { params } = describeQuery(execute.mock.calls[0][0] as SQL);
+    expect(params).toEqual([
+      "cs_test_123",
+      "paid",
+      "buyer@example.com",
+      3200,
+      "tide-mug",
+      1,
+      3200,
+    ]);
   });
 
-  it("skips persistence and logs an error when checkout metadata is missing", async () => {
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    const { insert } = mockDb();
-    constructEvent.mockReturnValue({
-      type: "checkout.session.completed",
-      data: { object: { id: "cs_test_456", metadata: {} } },
-    });
-
-    const res = await POST(makeRequest());
-
-    expect(res.status).toBe(200);
-    expect(insert).not.toHaveBeenCalled();
-    expect(errorSpy).toHaveBeenCalledWith(
-      "[stripe] checkout session cs_test_456 completed without product metadata"
-    );
-  });
-
-  it("does not insert a duplicate order item when the same session is delivered twice", async () => {
-    const { orderItemsValues } = mockDb({ orderReturning: [] });
+  it("writes the order and order item as a single atomic statement, idempotent on redelivery", async () => {
+    const { execute } = mockDb();
     constructEvent.mockReturnValue({
       type: "checkout.session.completed",
       data: {
         object: {
-          id: "cs_test_789",
+          id: "cs_test_123",
           payment_status: "paid",
           amount_total: 3200,
           metadata: {
@@ -165,10 +151,33 @@ describe("POST /api/webhooks/stripe", () => {
       },
     });
 
+    await POST(makeRequest());
+
+    // There is no separate "check if it already exists" round-trip: the ON CONFLICT
+    // DO NOTHING lives inside the same statement that inserts the order item, so a
+    // redelivered webhook can't land a half-written order between two calls.
+    expect(execute).toHaveBeenCalledTimes(1);
+    const { text } = describeQuery(execute.mock.calls[0][0] as SQL);
+    expect(text).toContain("ON CONFLICT (stripe_checkout_session_id) DO NOTHING");
+    expect(text).toContain("INSERT INTO order_items");
+    expect(text).toContain("FROM inserted_order");
+  });
+
+  it("skips persistence and logs an error when checkout metadata is missing", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { execute } = mockDb();
+    constructEvent.mockReturnValue({
+      type: "checkout.session.completed",
+      data: { object: { id: "cs_test_456", metadata: {} } },
+    });
+
     const res = await POST(makeRequest());
 
     expect(res.status).toBe(200);
-    expect(orderItemsValues).not.toHaveBeenCalled();
+    expect(execute).not.toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalledWith(
+      "[stripe] checkout session cs_test_456 completed without product metadata"
+    );
   });
 
   it("accepts other verified event types without touching the database", async () => {
