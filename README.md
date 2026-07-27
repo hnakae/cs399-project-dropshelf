@@ -16,6 +16,7 @@ STRIPE_SECRET_KEY=       # test-mode secret key from https://dashboard.stripe.co
 STRIPE_WEBHOOK_SECRET=   # from `stripe listen --forward-to localhost:3000/api/webhooks/stripe`
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 DATABASE_URL=            # Postgres (Neon via Vercel Marketplace) — see prototype/README.md
+ORDERS_VIEW_PASSWORD=    # Basic Auth password for the /orders view — see prototype/README.md
 ```
 
 `STRIPE_SECRET_KEY` and `DATABASE_URL` are required — the app throws on startup without
@@ -86,8 +87,11 @@ Sprint 3 deliverables — persistence and integration:
 - [x] Manual, end-to-end verification with a real Stripe test payment forwarded through the Stripe CLI, confirmed by querying the resulting rows in Postgres (`docs/sprint-3-persistence/manual-verification.md`)
 - [x] Architecture updated to reflect the persistence layer (`docs/sprint-3-persistence/architecture.md`)
 - [x] AI review of the persistence work documented (`docs/sprint-3-persistence/ai-implementation-review.md`)
+- [x] Webhook order write made atomic — a single SQL statement instead of two unguarded inserts (`docs/sprint-3-persistence/updates/webhook-atomic-write.md`)
+- [x] Order-history view (`/orders`), reading live from Postgres, gated by a shared-secret Basic Auth check (`docs/sprint-3-persistence/updates/orders-view.md`, `orders-view-auth-gate.md`)
 
 **Completed feature slice:** the product catalog and order history are now real,
 durable data instead of a hardcoded module and a `console.log`. A completed Stripe
-purchase leaves a permanent, queryable record — order and line item — in Postgres.
-
+purchase leaves a permanent, queryable record — order and line item, written
+atomically — in Postgres, and `/orders` makes that history visible and verifiable
+without dropping into a database GUI.

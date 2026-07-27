@@ -100,6 +100,46 @@ it worked:
 - Confirmed a `brew install` side effect (an unrelated Homebrew `node` formula being
   autoremoved) didn't break the working Node toolchain before continuing.
 
+## Follow-up work — webhook atomic write, orders view, access gate
+
+AI (Claude) implemented three follow-ups after the original persistence work above:
+rewriting the webhook's two-insert write into a single atomic SQL statement, building
+the `/orders` view (`lib/data.ts: getOrders()`, `app/orders/page.tsx`,
+`components/nav.tsx`), and gating it (`proxy.ts`). Full technical detail for each is in
+`docs/sprint-3-persistence/updates/`.
+
+**Accepted:** AI's proposal to fix the webhook's transaction gap with a single
+parameterized SQL statement (a CTE) rather than switching database drivers to get real
+`db.transaction()` support. I accepted this because switching drivers
+(`neon-http` → `neon-serverless`) to fix one two-statement write would touch the
+connection model for the entire app — disproportionate to the actual problem, which a
+single atomic statement solves cleanly without touching anything else.
+
+**Rejected/postponed:** AI's implementation notes flagged that `/orders` could be
+protected with Clerk (a full third-party auth provider, natively integrated with
+Vercel) instead of a shared-secret Basic Auth check, and laid out the real tradeoff
+rather than defaulting to one. I rejected Clerk for this sprint — not because it's the
+wrong tool in general, but because standing up a whole auth vendor (middleware, sign-in
+routes, session handling) to gate one internal read-only page is new-feature-shaped
+work, and this sprint's own instructions are explicit that Sprint 3 is stabilization,
+not new features. Logged as a real open question for Sprint 4 in
+`updates/orders-view-auth-gate.md` if real user accounts ever become an actual
+requirement, rather than silently deciding against it.
+
+**A decision I made myself, not AI's default:** when AI first explained `order_items`
+to me, the explanation described it in terms of what the schema is *designed* to
+support — multiple products per order, arbitrary quantities. I pushed back with a
+concrete observation from actually using the app: there is only one Buy button per
+product, no cart, and `createCheckoutSession` hardcodes `quantity: 1` — so no order
+that currently exists, or currently can exist, has more than one line item. AI had
+conflated the schema's intended shape with what the running application actually
+exercises. That distinction matters for a live demo: claiming `order_items` "handles
+multiple items" would be describing an aspiration, not a verified behavior, and this
+sprint's whole premise is not accepting "looks done" without checking it's actually
+true. I made AI restate the explanation to separate what the table is *for*
+(architecturally) from what it's *currently used for* (a single row per order, always),
+rather than letting the more impressive-sounding version stand uncorrected.
+
 ## Engineering responsibility statement
 
 All final decisions — SQL over NoSQL, Drizzle over Prisma, and what to defer to Sprint 4 — were mine,

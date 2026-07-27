@@ -4,6 +4,10 @@ This supersedes `docs/sprint-2-prototype/architecture.md` with what actually got
 in Sprint 3: a real persistence layer. See
 [Deviations from Sprint 2](#deviations-from-sprint-2) for what changed and why.
 
+> **Follow-up work after this doc was first written** (webhook atomic-write fix, the
+> `/orders` view, and its access-control gate) is documented individually in
+> `updates/` and folded into the sections below rather than duplicated here.
+
 ## Overview
 
 DropShelf is still a single Next.js app (App Router) with no separate backend server.
@@ -49,6 +53,15 @@ history.
   from the database instead of a module constant.
 - `app/checkout/success/page.tsx` — unchanged. Still re-verifies against Stripe
   directly rather than reading the database; see deviations for why this was left alone.
+- `app/orders/page.tsx` — **new.** An `async` server component that calls
+  `await getOrders()` and renders every persisted order with its line items — the
+  order-history UI originally listed as an open question below. Explicitly
+  `export const dynamic = "force-dynamic"` so it queries Postgres on every request
+  instead of prerendering a build-time snapshot (order data changes on every checkout,
+  unlike the product catalog). Gated by `proxy.ts` (see below). Full detail:
+  `updates/orders-view.md`.
+- `components/nav.tsx` — **new.** Site-wide nav rendered from `app/layout.tsx`, linking
+  `/` and `/orders`.
 
 **Server — server action + API route (`lib/`, `app/api/`)**
 
@@ -61,25 +74,33 @@ history.
   event, `recordOrder()` now:
   1. Reads `productId` / `quantity` / `unitPriceInCents` from the session's metadata;
      logs an error and returns without writing anything if that metadata is missing.
-  2. Inserts an `orders` row keyed by `stripe_checkout_session_id`, with
-     `onConflictDoNothing` on that unique column — Stripe can and does redeliver
-     webhooks, so a duplicate delivery for the same session is a no-op rather than a
-     duplicate order.
-  3. Only if the insert actually happened (i.e. `.returning()` produced a row — a
-     fresh session, not a redelivery) inserts the corresponding `order_items` row.
+  2. Writes the `orders` row and its `order_items` row in a **single parameterized SQL
+     statement** (a `WITH ... AS (INSERT ... RETURNING id) INSERT ... SELECT FROM`
+     CTE), not two separate `db.insert()` calls — `drizzle-orm/neon-http` doesn't
+     support `db.transaction()`, so atomicity comes from it being one Postgres
+     statement instead. `ON CONFLICT (stripe_checkout_session_id) DO NOTHING` on the
+     `orders` insert still makes a redelivered webhook a complete no-op: an empty CTE
+     means the `order_items` insert also produces nothing. Full detail and the
+     transaction-vs-single-statement reasoning: `updates/webhook-atomic-write.md`.
 - `lib/stripe.ts` — unchanged.
+- `proxy.ts` — **new.** Gates `/orders` with HTTP Basic Auth checked against
+  `ORDERS_VIEW_PASSWORD`. This Next.js version (16.2.9) renamed the `middleware.ts`
+  file convention to `proxy.ts` as of v16.0.0; the build output confirms it
+  (`ƒ Proxy (Middleware)`). Full reasoning, including why a shared-secret gate was
+  chosen over standing up Clerk: `updates/orders-view-auth-gate.md`.
 
 **Route table**
 
-Unchanged from Sprint 2 — no new routes were added. The same four routes now read from
-and write to Postgres instead of an in-memory module.
+One new route this update: `/orders`. Otherwise unchanged from Sprint 2 — the storefront
+routes read from and write to Postgres instead of an in-memory module.
 
 | Method | Route | Handler | Purpose |
 |---|---|---|---|
 | GET | `/` | `app/page.tsx` | Storefront: profile + product grid, now DB-backed |
 | POST (server action) | — | `lib/actions.ts: createCheckoutSession` | Create a Stripe Checkout Session (DB product lookup), redirect to Stripe |
 | GET | `/checkout/success?session_id=` | `app/checkout/success/page.tsx` | Re-verify payment against Stripe, show confirmation |
-| POST | `/api/webhooks/stripe` | `app/api/webhooks/stripe/route.ts` | Verify event, persist order + order item to Postgres |
+| POST | `/api/webhooks/stripe` | `app/api/webhooks/stripe/route.ts` | Verify event, persist order + order item to Postgres (single atomic statement) |
+| GET | `/orders` | `app/orders/page.tsx` | Order history, read from Postgres on every request; gated by `proxy.ts` |
 
 ## Data Flow
 
@@ -131,16 +152,20 @@ deliberately unchanged:
   browser redirect does). Reading the order back from Postgres here would require
   handling the case where the webhook hasn't landed yet — deferred rather than solved
   under time pressure.
-- **No order-history UI.** Orders are persisted and queryable directly in Postgres
-  (e.g. via `npm run db:studio`), but there's no page in the app that lists them yet.
+- **No order-history UI — resolved as a follow-up.** `/orders` now exists (see above
+  and `updates/orders-view.md`); this is no longer an open gap.
 
 ## Open Questions (carried into Sprint 4)
 
 - Should `/checkout/success` read the order back from the database (with a fallback or
   retry for the case where the webhook hasn't landed yet), instead of only re-checking
   Stripe?
-- Is a minimal order-history or admin view in scope for a future sprint, now that the
-  data exists to support one?
 - The known Sprint 2 gap — `/checkout/success` throws an unhandled 500 on an invalid or
   expired `session_id` — is still unfixed; it's independent of persistence and was not
   in scope this sprint.
+- `/orders` has no automated test coverage yet (`updates/orders-view.md`) — worth a
+  Sprint 4 pass.
+- `/orders` is gated by a shared-secret `proxy.ts` check, not real auth — acceptable for
+  a single internal page this sprint, but should be replaced by real auth (Clerk being
+  the leading candidate — see `updates/orders-view-auth-gate.md`) if this app ever gets
+  real user accounts.
