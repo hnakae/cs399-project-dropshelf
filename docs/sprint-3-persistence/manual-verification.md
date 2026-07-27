@@ -132,3 +132,72 @@ insisted on watching the row land in Postgres rather than trusting a `200` respo
 mirroring the Sprint 2 lesson that mocked-test coverage and a live, observed run are
 different claims. That gap is now fixed and documented so it doesn't reappear for the
 next person who clones this repo.
+
+## Follow-up verification — webhook atomic write, orders view, access gate
+
+Performed 2026-07-24, same local setup (real Neon Postgres, Stripe test mode). Full
+narrative detail for each item lives in `docs/sprint-3-persistence/updates/`; summarized
+here so this file stays the single place verification evidence is recorded.
+
+### 7. Webhook write is atomic (`updates/webhook-atomic-write.md`)
+
+- **Action:** Rewrote `recordOrder()` to write `orders` and `order_items` as one
+  parameterized SQL statement (a `WITH ... INSERT ... RETURNING` CTE) instead of two
+  separate `db.insert()` calls, since `drizzle-orm/neon-http` doesn't support
+  `db.transaction()`.
+- **Expected:** Same idempotent behavior as before (a redelivered webhook is a no-op),
+  now with no window between the two writes for a crash to leave an orphaned order.
+- **Observed:** Matched. `__tests__/api/webhooks/stripe/route.test.ts` rewritten to
+  mock `db.execute`; all 7 webhook tests pass. `npm run test:run` — 27/27. `npm run
+  build` succeeds.
+
+### 8. `/orders` reads live from the database (`updates/orders-view.md`)
+
+- **Action:** Built `getOrders()` (`lib/data.ts`) and `app/orders/page.tsx`, then ran
+  `npm run build` before adding any rendering-mode export.
+- **Expected:** A page showing every order and its line items.
+- **Observed:** Page rendered correctly, but the build output showed `/orders` as
+  **static** (`○`) — prerendered once at build time, same as the product catalog.
+  **Gap found:** a static order-history page would freeze at whatever was in the
+  database at the last build and silently miss every order placed after that, which
+  defeats the purpose of a live view. **Fixed** by adding
+  `export const dynamic = "force-dynamic"`; re-running `npm run build` confirmed
+  `/orders` now shows `ƒ` (dynamic, rendered per request).
+- **Live check:** Started `npm run dev`, then `curl`'d `/orders` directly (bypasses any
+  browser cache) with valid credentials. The returned HTML showed orders `#1`, `#4`,
+  `#5` with totals `$32.00` / `$58.00` / `$58.00`, cross-checked against a direct
+  database query run at the same time — matched exactly, not just "200 came back."
+- **Confirms `force-dynamic` actually works, not just that the flag was set:** while
+  testing, order line items were deleted from `order_items` directly in Drizzle Studio
+  (outside the app entirely). Reloading `/orders` immediately reflected the change — a
+  cached/static page would not have.
+
+### 9. Access gate rejects/accepts correctly (`updates/orders-view-auth-gate.md`)
+
+- **Action:** `curl` against `/orders` with no credentials, wrong credentials, and
+  correct credentials.
+- **Expected:** `401`, `401`, `200` respectively.
+- **Observed:** Matched exactly:
+  ```
+  no auth:      401
+  wrong auth:   401
+  correct auth: 200
+  ```
+  Also confirmed the gate fails **closed**, not open, if `ORDERS_VIEW_PASSWORD` is
+  unset (returns `500` rather than serving the page).
+
+### Issues found (this pass)
+
+4. **A misleading comment in `.env.local`** initially said the Basic Auth username was
+   "ignored." It isn't — the check compares the full `orders:<password>` credential
+   pair, so the username must be typed as `orders` exactly. Caught when the user asked
+   "what's the username" and the answer required re-reading the actual `proxy.ts` logic
+   rather than trusting the comment. **Fixed**: comment corrected in `.env.local`.
+5. **User-observed:** after deleting rows from `order_items` in Drizzle Studio, the
+   `orders` rows themselves remained (3 rows still present). This was not a caching bug
+   in `/orders` — the page correctly reflected the database's actual state (orders with
+   zero line items). It surfaced a real gap in the manual-deletion workflow: `orders`
+   and `order_items` are separate tables with no cascade delete configured, so clearing
+   one doesn't clear the other. No code fix applied — this is expected relational
+   behavior, not a defect — but worth knowing before using Drizzle Studio to clean up
+   test data by hand.
