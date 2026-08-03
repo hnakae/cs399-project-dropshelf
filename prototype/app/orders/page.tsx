@@ -1,10 +1,12 @@
 import { CancelOrderButton } from "@/components/cancel-order-button";
+import { requireAdmin } from "@/lib/admin";
 import { getOrders } from "@/lib/data";
 import { formatPrice } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
 export default async function OrdersPage() {
+  await requireAdmin();
   const orders = await getOrders();
 
   return (
