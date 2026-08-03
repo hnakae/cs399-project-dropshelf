@@ -1,3 +1,10 @@
+// Tests for CheckoutSuccessPage, covering its four states based on the
+// Stripe Checkout Session re-verified server-side (never trusting the
+// redirect alone):
+//   1. No `session_id` in the URL              -> "Nothing to confirm"
+//   2. `session_id` Stripe can't retrieve/verify -> "Session not found"
+//   3. Session found but `payment_status` isn't "paid" -> "Payment not completed"
+//   4. Session found and paid                   -> "Order confirmed"
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -47,6 +54,18 @@ describe("CheckoutSuccessPage", () => {
     });
     expect(
       screen.getByRole("heading", { name: "Payment not completed" })
+    ).toBeInTheDocument();
+  });
+
+  it("shows a fallback instead of crashing when Stripe can't find or verify the session", async () => {
+    retrieve.mockRejectedValue(
+      new Error("No such checkout session: 'cs_not_a_real_session'")
+    );
+
+    await renderPage("cs_not_a_real_session");
+
+    expect(
+      screen.getByRole("heading", { name: "Session not found" })
     ).toBeInTheDocument();
   });
 

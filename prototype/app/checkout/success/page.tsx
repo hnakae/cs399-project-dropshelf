@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 
 export default async function CheckoutSuccessPage({
@@ -17,9 +18,19 @@ export default async function CheckoutSuccessPage({
     );
   }
 
-  const session = await stripe.checkout.sessions.retrieve(sessionId, {
-    expand: ["line_items"],
-  });
+  let session: Stripe.Checkout.Session;
+  try {
+    session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ["line_items"],
+    });
+  } catch {
+    return (
+      <ConfirmationShell
+        title="Session not found"
+        message="We couldn't verify this checkout session with Stripe. If you just paid, check your email for a receipt."
+      />
+    );
+  }
 
   const item = session.line_items?.data[0];
   const paid = session.payment_status === "paid";
