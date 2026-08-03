@@ -107,11 +107,26 @@ Sprint 4 deliverables — quality and persistence completion (in progress):
 - [x] `drizzle-zod` schema validation added (`lib/db/validation.ts`) — Zod
       insert/select schemas derived directly from the Drizzle table
       definitions, so validation can't drift from the DB schema
-- [ ] Clerk authentication, replacing the shared-password Basic Auth gate on `/orders`
-- [ ] Admin product management (create/edit/archive) with validated input
-- [ ] Order cancel-and-refund action (Stripe refund + status update)
-- [ ] Automated test coverage for the above
-- [ ] Sprint 4 Canvas submission fields finalized
+- [x] Clerk authentication, replacing the shared-password Basic Auth gate on
+      `/orders` (also now gates `/admin`) — code complete and unit-tested;
+      live sign-in verification still pending the one-time Clerk marketplace
+      terms-acceptance step
+- [x] Admin product management (create/edit/archive) with validated input
+      (`/admin/products`)
+- [x] Order cancel-and-refund action (Stripe refund + status update, with a
+      guard against double-refunding)
+- [x] Automated test coverage for the above — 55 tests passing
+- [x] Sprint 4 Canvas submission fields finalized (`docs/sprint-4-quality/kickoff.md`)
+
+**Completed feature slice:** signed-in admins can manage the product catalog
+(create/edit/archive) and cancel an order for an automatic Stripe refund,
+extending the persistence workflow from Create/Read to full CRUD plus a
+compensating transaction — all gated by real Clerk authentication in place of
+the Sprint 3 shared-password check. **Known gap:** the `/checkout/success`
+500-on-invalid-session bug from the original Sprint 4 scope was superseded by
+this larger body of work and remains open; live browser verification of the
+Clerk flows is blocked on a one-time marketplace terms-acceptance step (see
+`docs/sprint-4-quality/kickoff.md` for details).
 
 **In progress:** see `docs/sprint-4-quality/plan.md` for the staged rollout
 (Clerk auth → product CRUD → order refunds → tests). Nothing beyond the
