@@ -4,6 +4,7 @@ import {
   integer,
   serial,
   timestamp,
+  boolean,
 } from "drizzle-orm/pg-core";
 
 export const products = pgTable("products", {
@@ -12,6 +13,7 @@ export const products = pgTable("products", {
   description: text("description").notNull(),
   priceInCents: integer("price_in_cents").notNull(),
   imageUrl: text("image_url").notNull(),
+  isArchived: boolean("is_archived").notNull().default(false),
 });
 
 export const orders = pgTable("orders", {

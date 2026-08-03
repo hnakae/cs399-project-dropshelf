@@ -36,6 +36,13 @@ export const creator: Creator = {
 };
 
 export async function getProducts(): Promise<Product[]> {
+  return getDb()
+    .select()
+    .from(productsTable)
+    .where(eq(productsTable.isArchived, false));
+}
+
+export async function getAllProductsIncludingArchived(): Promise<Product[]> {
   return getDb().select().from(productsTable);
 }
 

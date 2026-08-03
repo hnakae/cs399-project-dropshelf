@@ -4,7 +4,12 @@ const { getDb } = vi.hoisted(() => ({ getDb: vi.fn() }));
 
 vi.mock("@/lib/db", () => ({ getDb }));
 
-import { getProductById, getProducts, type Product } from "@/lib/data";
+import {
+  getAllProductsIncludingArchived,
+  getProductById,
+  getProducts,
+  type Product,
+} from "@/lib/data";
 
 const products: Product[] = [
   {
@@ -13,6 +18,7 @@ const products: Product[] = [
     description: "A hand-thrown stoneware mug.",
     priceInCents: 3200,
     imageUrl: "https://picsum.photos/seed/dropshelf-product-1/600/600",
+    isArchived: false,
   },
   {
     id: "desert-bowl",
@@ -20,6 +26,7 @@ const products: Product[] = [
     description: "A wide serving bowl.",
     priceInCents: 5800,
     imageUrl: "https://picsum.photos/seed/dropshelf-product-2/600/600",
+    isArchived: false,
   },
 ];
 
@@ -36,10 +43,19 @@ beforeEach(() => {
 });
 
 describe("getProducts", () => {
-  it("returns every product row from the database", async () => {
-    mockSelectFrom(products);
+  it("returns non-archived product rows from the database", async () => {
+    const { where } = mockSelectFrom(products);
 
     await expect(getProducts()).resolves.toEqual(products);
+    expect(where).toHaveBeenCalled();
+  });
+});
+
+describe("getAllProductsIncludingArchived", () => {
+  it("returns every product row, including archived ones", async () => {
+    mockSelectFrom(products);
+
+    await expect(getAllProductsIncludingArchived()).resolves.toEqual(products);
   });
 });
 

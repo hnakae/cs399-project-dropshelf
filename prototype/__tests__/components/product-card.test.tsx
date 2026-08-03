@@ -11,6 +11,7 @@ const product: Product = {
     "A hand-thrown stoneware mug glazed in layered blues and greens, each one a little different from the last.",
   priceInCents: 3200,
   imageUrl: "https://picsum.photos/seed/dropshelf-product-1/600/600",
+  isArchived: false,
 };
 
 describe("ProductCard", () => {
