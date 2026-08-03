@@ -95,3 +95,24 @@ durable data instead of a hardcoded module and a `console.log`. A completed Stri
 purchase leaves a permanent, queryable record — order and line item, written
 atomically — in Postgres, and `/orders` makes that history visible and verifiable
 without dropping into a database GUI.
+
+## Sprint 4 Progress
+
+Sprint 4 deliverables — quality and persistence completion (in progress):
+
+- [x] Kickoff scope, branch, and Canvas submission fields drafted (`docs/sprint-4-quality/kickoff.md`)
+- [x] Staged implementation plan written for Clerk auth, full product CRUD, order
+      cancel/refund, and test coverage, with per-item test annotations
+      (`docs/sprint-4-quality/plan.md`)
+- [x] `drizzle-zod` schema validation added (`lib/db/validation.ts`) — Zod
+      insert/select schemas derived directly from the Drizzle table
+      definitions, so validation can't drift from the DB schema
+- [ ] Clerk authentication, replacing the shared-password Basic Auth gate on `/orders`
+- [ ] Admin product management (create/edit/archive) with validated input
+- [ ] Order cancel-and-refund action (Stripe refund + status update)
+- [ ] Automated test coverage for the above
+- [ ] Sprint 4 Canvas submission fields finalized
+
+**In progress:** see `docs/sprint-4-quality/plan.md` for the staged rollout
+(Clerk auth → product CRUD → order refunds → tests). Nothing beyond the
+groundwork above has landed yet.
