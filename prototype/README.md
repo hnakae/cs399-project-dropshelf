@@ -11,7 +11,9 @@ STRIPE_SECRET_KEY=       # test-mode secret key from https://dashboard.stripe.co
 STRIPE_WEBHOOK_SECRET=   # from `stripe listen --forward-to localhost:3000/api/webhooks/stripe`
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 DATABASE_URL=            # Postgres connection string (Neon, via Vercel Marketplace)
-ORDERS_VIEW_PASSWORD=    # HTTP Basic Auth password for /orders (username is "orders")
+CLERK_SECRET_KEY=                     # provisioned by `vercel integration add clerk`
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=    # provisioned by `vercel integration add clerk`
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
 ```
 
 `DATABASE_URL` and friends (`PGHOST`, `PGUSER`, etc.) are provisioned automatically once
@@ -55,10 +57,20 @@ for the schema and the reasoning behind the SQL-over-NoSQL and Drizzle-over-Pris
 
 `/orders` lists every persisted order and its line items, read from Postgres on every
 request (not cached — see `docs/sprint-3-persistence/updates/orders-view.md`). It's
-gated by HTTP Basic Auth (username `orders`, password `ORDERS_VIEW_PASSWORD` from
-`.env.local`) since the app has no user-account system — see
-`docs/sprint-3-persistence/updates/orders-view-auth-gate.md` for why a shared-secret
-gate was used instead of a full auth provider.
+gated by [Clerk](https://clerk.com) authentication (see `proxy.ts`) — any signed-in
+user counts as admin, since this is a single-shop-owner app with one account created
+directly in the Clerk Dashboard (no public sign-up). This replaced the Sprint 3 shared-
+password Basic Auth gate (`docs/sprint-3-persistence/updates/orders-view-auth-gate.md`)
+now that the app needs real per-action authorization for the admin product/order
+mutations added in Sprint 4, not just a read-only view gate.
+
+## Admin
+
+Signed-in users can manage products at `/admin/products` (create, edit, archive — see
+`lib/products-actions.ts`) and cancel/refund an order from `/orders` (see
+`lib/orders-actions.ts`). Every mutation calls `requireAdmin()` (`lib/admin.ts`)
+independently of the `proxy.ts` route gate, since Server Actions are reachable even
+when their page isn't rendered.
 
 ## Testing
 

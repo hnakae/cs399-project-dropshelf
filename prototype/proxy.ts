@@ -1,25 +1,16 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-export function proxy(request: NextRequest) {
-  const password = process.env.ORDERS_VIEW_PASSWORD;
-  if (!password) {
-    return new NextResponse("ORDERS_VIEW_PASSWORD is not configured", {
-      status: 500,
-    });
+const isProtectedRoute = createRouteMatcher(["/orders(.*)", "/admin(.*)"]);
+
+export default clerkMiddleware(async (auth, req) => {
+  if (isProtectedRoute(req)) {
+    await auth.protect();
   }
-
-  const expected = `Basic ${Buffer.from(`orders:${password}`).toString("base64")}`;
-  if (request.headers.get("authorization") === expected) {
-    return NextResponse.next();
-  }
-
-  return new NextResponse("Authentication required", {
-    status: 401,
-    headers: { "WWW-Authenticate": 'Basic realm="Orders"' },
-  });
-}
+});
 
 export const config = {
-  matcher: "/orders",
+  matcher: [
+    "/((?!_next|.*\\.(?:html?|css|js|json|jpe?g|webp|png|gif|svg|ico|ttf|woff2?)).*)",
+    "/(api|trpc)(.*)",
+  ],
 };
