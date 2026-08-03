@@ -29,32 +29,45 @@ general field-level order editing.
 
 ## Stage A — Clerk auth
 
-> **Status (2026-08-02):** all code is written, committed
-> (`1599ae7`), and passes `build`/`lint`/`tsc`/`test:run`. Blocked on the
-> user completing the Clerk marketplace terms-acceptance step in the
-> browser (`vercel integration add clerk` returns
-> `action_required: integration_terms_acceptance_required` until then) —
-> so the two items below and the live browser checks are still open.
+> **Status (2026-08-03): provisioned and live-verified.** Terms accepted,
+> `vercel integration add clerk` succeeded (resource `clerk-red-garden`),
+> `vercel env pull` wrote `CLERK_SECRET_KEY` +
+> `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` into `.env.local`. Verified live
+> against a running `npm run dev`: `/orders` and `/admin/products` both
+> `307` redirect to `/sign-in?redirect_url=...` when signed out, `/sign-in`
+> renders Clerk's `<SignIn/>` UI with no console errors (only the expected
+> "development keys" warning), and `/api/webhooks/stripe` is unaffected
+> (still reachable, still enforces its own signature check). One follow-up
+> fix landed from this: Clerk logs a runtime deprecation warning that
+> `createRouteMatcher`-based middleware gating is being replaced by
+> resource-level checks, since path-matching can diverge from actual Next.js
+> routing — `/orders/page.tsx` was relying solely on the proxy gate, so it
+> now also calls `requireAdmin()` directly, matching the pattern `/admin/*`
+> already had via its layout (`d35d11b`). Still open: creating the actual
+> admin user in the Clerk Dashboard is the user's step, not something done
+> here — so a full signed-in walkthrough (Stage B/C's manual checks) is
+> still pending that.
 
-- [ ] Provision Clerk: `vercel integration add clerk` (auto-provisions
+- [x] Provision Clerk: `vercel integration add clerk` (auto-provisions
       `CLERK_SECRET_KEY` + `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`), then
-      `vercel env pull .env.local --yes`. **Blocked:** needs the user to
-      accept marketplace terms in the browser first.
-      **Tested by:** manual — `vercel env ls` shows the two keys present.
+      `vercel env pull .env.local --yes`.
+      **Tested by:** confirmed both keys present in `.env.local` after pull. **Done.**
 - [ ] Create the one admin user directly in the Clerk Dashboard; disable
       public sign-up in Clerk's Restrictions settings (no `/sign-up` route is
-      shipped — deliberate, see plan rationale below). **Blocked on the item above.**
+      shipped — deliberate, see plan rationale below). **This is the user's
+      step** — not something to do on their behalf in their auth system.
       **Tested by:** manual — confirm dashboard restriction is set.
 - [x] `npm install @clerk/nextjs` (`@clerk/nextjs@^7.6.4`).
-      **Tested by:** `npm run build` succeeds with the import resolvable.
+      **Tested by:** `npm run build` succeeds with the import resolvable. **Passing.**
 - [x] Rewrite `proxy.ts`: `clerkMiddleware` + `createRouteMatcher(["/orders(.*)", "/admin(.*)"])`,
       broad `matcher` config (per Clerk convention — do NOT narrow the
       top-level matcher to just those paths, or the session handshake breaks
       on other routes). Removes the old Basic Auth / `ORDERS_VIEW_PASSWORD`
-      block entirely.
+      block entirely. Also see the `d35d11b` follow-up above re: the
+      `createRouteMatcher` deprecation warning.
       **Tested by:** manual — signed out, visiting `/orders` and any
-      `/admin/*` path redirects to `/sign-in`; signed in, both load.
-      **Not yet run** (needs live Clerk keys from the blocked item above).
+      `/admin/*` path redirects to `/sign-in`; webhook route unaffected.
+      **Verified live** against `npm run dev` + `curl`.
 - [x] Add `lib/admin.ts` exporting `requireAdmin()` (`await auth()`, throws if
       no `userId`) — used for defense-in-depth inside Server Actions, since
       proxy-level gating alone is only an "optimistic check" per the Next.js
@@ -64,10 +77,12 @@ general field-level order editing.
       resolve when signed in. **Passing.**
 - [x] Wrap `app/layout.tsx` body in `<ClerkProvider>`.
       **Tested by:** manual — no hydration errors in dev console; `<UserButton />` renders.
-      **Not yet run** (needs live keys).
+      **Verified live** — no console errors on `/` or `/sign-in`.
 - [x] Add `app/sign-in/[[...sign-in]]/page.tsx` using Clerk's `<SignIn />`.
       **Tested by:** manual — sign-in flow completes and redirects back.
-      **Not yet run** (needs live keys).
+      **Partially verified:** the `<SignIn/>` UI itself renders correctly
+      live; completing an actual sign-in needs the admin account, which is
+      the user's step above.
 - [x] Update `components/nav.tsx` with a sign-in/out control + `<UserButton />`.
       **Deviation from the original plan:** `@clerk/nextjs@7` (Core 3) has
       actually dropped the `<SignedIn>`/`<SignedOut>` components this plan
@@ -75,16 +90,18 @@ general field-level order editing.
       exports, not just the (stale) cached skill docs. Used the current
       replacement instead: `<Show when="signed-in">` / `<Show when="signed-out">`.
       **Tested by:** manual visual check, both signed-in and signed-out states.
-      **Not yet run** (needs live keys).
+      **Verified signed-out state live** (nav shows a "SIGN IN" link); the
+      signed-in state needs the admin account (user's step above).
 - [x] Update `README.md` — replace `ORDERS_VIEW_PASSWORD` env docs with Clerk env vars.
       **Tested by:** N/A (docs only).
 
-**Commit:** `feat: replace Basic Auth with Clerk authentication` (`1599ae7`)
+**Commit:** `feat: replace Basic Auth with Clerk authentication` (`1599ae7`),
+follow-up fix `d35d11b`
 
 **Stage verification:** `npm run build` ✅, `npm run lint` ✅, `npm run test:run` ✅
-(28/28 passing at the time, now 55/55 with Stage D's additions). Manual
-browser check of the signed-in/out flows is the one thing still pending,
-blocked on Clerk provisioning.
+(55/55 passing). Live-verified: route gating, sign-in page rendering, webhook
+still public. Still open (user's step): create the admin account in the
+Clerk Dashboard, then walk through Stage B/C's signed-in flows.
 
 ---
 

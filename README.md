@@ -108,9 +108,11 @@ Sprint 4 deliverables — quality and persistence completion (in progress):
       insert/select schemas derived directly from the Drizzle table
       definitions, so validation can't drift from the DB schema
 - [x] Clerk authentication, replacing the shared-password Basic Auth gate on
-      `/orders` (also now gates `/admin`) — code complete and unit-tested;
-      live sign-in verification still pending the one-time Clerk marketplace
-      terms-acceptance step
+      `/orders` (also now gates `/admin`) — provisioned and live-verified:
+      signed-out requests to `/orders`/`/admin/*` redirect to `/sign-in`, the
+      Stripe webhook is unaffected. Completing an actual sign-in still needs
+      the admin account, which is created directly in the Clerk Dashboard
+      rather than by an agent
 - [x] Admin product management (create/edit/archive) with validated input
       (`/admin/products`)
 - [x] Order cancel-and-refund action (Stripe refund + status update, with a
