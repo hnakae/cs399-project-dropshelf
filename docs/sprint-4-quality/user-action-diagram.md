@@ -2,8 +2,10 @@
 
 For the Sprint 4 Engineering Demonstration: two UML sequence diagrams
 covering the buyer and admin user actions, and a UML class diagram for the
-underlying data model. GitHub and most Markdown viewers render Mermaid
-blocks directly.
+underlying data model. Each diagram is included below as a rendered PNG
+(`images/`, generated with `@mermaid-js/mermaid-cli` so it displays even
+outside a Mermaid-aware viewer — e.g. pasted into a slide or a PDF export),
+with its editable Mermaid source in a collapsible section underneath.
 
 ## Buyer flow (public, no sign-in)
 
@@ -11,6 +13,11 @@ Covers browsing, checkout, and the two independent paths that follow a
 Stripe payment: the async webhook that persists the order, and the buyer's
 own redirect back to a confirmation page that re-verifies against Stripe
 rather than trusting the redirect.
+
+![Buyer sequence diagram: browse, checkout, async webhook, and confirmation](images/buyer-sequence.png)
+
+<details>
+<summary>Mermaid source</summary>
 
 ```mermaid
 sequenceDiagram
@@ -52,11 +59,18 @@ sequenceDiagram
     end
 ```
 
+</details>
+
 ## Admin flow (Clerk-gated: `/orders`, `/admin/*`)
 
 Covers the Sprint 4 additions: signing in, cancelling an order for a Stripe
 refund, and managing the product catalog. Every branch that mutates data
 calls `requireAdmin()` itself, independent of the proxy-level redirect.
+
+![Admin sequence diagram: sign-in redirect, cancel and refund, and product management](images/admin-sequence.png)
+
+<details>
+<summary>Mermaid source</summary>
 
 ```mermaid
 sequenceDiagram
@@ -99,12 +113,19 @@ sequenceDiagram
     end
 ```
 
+</details>
+
 ## Data model
 
 `Order` has many `OrderItem`s; each `OrderItem` references exactly one
 `Product`. Archiving a product only sets `isArchived` — the row is never
 deleted, so `OrderItem.productId` always resolves and past orders keep
 showing the correct product title.
+
+![Class diagram: Order has many OrderItem, each OrderItem references one Product](images/data-model-class.png)
+
+<details>
+<summary>Mermaid source</summary>
 
 ```mermaid
 classDiagram
@@ -134,6 +155,8 @@ classDiagram
     Order "1" --> "many" OrderItem : has
     OrderItem "many" --> "1" Product : references
 ```
+
+</details>
 
 ## Notes for the demo
 
