@@ -1,3 +1,5 @@
+// Tests for requireAdmin(): throws when there's no signed-in Clerk user,
+// resolves the user id when there is one.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { auth } = vi.hoisted(() => ({ auth: vi.fn() }));

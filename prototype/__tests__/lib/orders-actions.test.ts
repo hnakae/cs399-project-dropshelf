@@ -1,3 +1,10 @@
+// Tests for cancelOrder(): requires admin before touching the database or
+// Stripe; rejects an unknown order id; refuses to refund an order that's
+// already "refunded" without calling Stripe (the guard against a double
+// refund); on the happy path retrieves the Checkout Session, refunds the
+// right PaymentIntent (handling both a string id and an expanded object),
+// and marks the order refunded; refuses to refund a session with no
+// payment intent to refund.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { requireAdmin, getDb, retrieve, refundsCreate } = vi.hoisted(() => ({

@@ -1,3 +1,6 @@
+// Tests for the product read queries in lib/data.ts: getProducts() filters
+// out archived rows, getAllProductsIncludingArchived() doesn't, and
+// getProductById() returns the matching row or undefined.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { getDb } = vi.hoisted(() => ({ getDb: vi.fn() }));

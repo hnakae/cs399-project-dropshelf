@@ -1,3 +1,8 @@
+// Tests for the refined drizzle-zod product schemas: insertProductSchema
+// rejects a zero/negative price, an empty/whitespace title, a non-URL
+// image, and a malformed (uppercase/spaced) id, and trims whitespace on
+// accepted input; updateProductSchema additionally strips id/isArchived
+// even if supplied.
 import { describe, expect, it } from "vitest";
 import { insertProductSchema, updateProductSchema } from "@/lib/db/validation";
 

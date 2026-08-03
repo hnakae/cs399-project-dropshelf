@@ -1,3 +1,6 @@
+// Tests for lib/utils: formatPrice() formats cent amounts as dollars, and
+// getBaseUrl() resolves NEXT_PUBLIC_SITE_URL -> VERCEL_URL -> localhost, in
+// that priority order.
 import { afterEach, describe, expect, it } from "vitest";
 import { formatPrice, getBaseUrl } from "@/lib/utils";
 

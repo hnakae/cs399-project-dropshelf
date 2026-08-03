@@ -1,3 +1,7 @@
+// Tests for the product admin actions (createProduct, updateProduct,
+// archiveProduct): each requires admin and validates input before ever
+// touching the database, and each performs the expected insert/update once
+// admin + validation pass.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { requireAdmin, getDb } = vi.hoisted(() => ({

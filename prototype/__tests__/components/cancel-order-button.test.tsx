@@ -1,3 +1,6 @@
+// Tests for CancelOrderButton: renders as a real submit button inside a
+// form (not a plain link), and its confirm() gate actually gates —
+// declining the dialog blocks the cancelOrder action, accepting it submits.
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

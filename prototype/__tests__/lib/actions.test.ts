@@ -1,3 +1,8 @@
+// Tests for createCheckoutSession: builds the correct one-item Stripe
+// session (price, currency, success/cancel URLs, and metadata carrying the
+// product id/quantity/price for the webhook to consume) and redirects to
+// it; rejects an unknown product id before calling Stripe; refuses to
+// redirect if Stripe doesn't return a Checkout URL.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Product } from "@/lib/data";
 
