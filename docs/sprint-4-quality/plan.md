@@ -285,3 +285,89 @@ All new tests follow the existing convention exactly: `vi.hoisted()` +
   default error boundary, same as the app's one existing validation case.
 - `CancelOrderButton` is the one deliberate Client Component exception —
   flagged above as a trade-off to confirm, not a settled default.
+
+---
+
+## Deferred — multi-item cart (research done, not built)
+
+Not part of Stages A–E above. Raised separately: today every order has
+exactly one `order_item`, since `createCheckoutSession` only ever takes one
+`productId` with quantity hardcoded to `1` — the `Order` -> many `OrderItem`
+relationship in the data model (see `docs/sprint-4-quality/user-action-diagram.md`'s
+class diagram) has never actually been exercised. A real shopping cart
+(multiple products + quantities before one checkout) would fix that. This
+is a genuinely separate feature — new client-side cart state, new UI,
+reworked checkout + webhook — not a small tweak, so it's parked here rather
+than folded into Stage B/C.
+
+**API research already done and verified (not assumed from memory):**
+
+- `line_items[].price_data.product_data.metadata` is a real, documented
+  Stripe field (confirmed via `stripe docs api POST /v1/checkout/sessions`)
+  — each line item can carry its own `{ productId: product.id }` by
+  creating an inline Product per line. Replaces today's flat top-level
+  `session.metadata`, which only works because there's currently exactly
+  one item.
+- Webhook side: `checkout.session.completed` does NOT include line items.
+  Stripe's documented fulfillment pattern is
+  `stripe.checkout.sessions.retrieve(sessionId, { expand: ['line_items'] })`.
+  To read back the per-item `productId` metadata, expand deeper:
+  `stripe.checkout.sessions.listLineItems(sessionId, { expand:
+  ['data.price.product'] })` — confirmed `expand?: Array<string>` on
+  `SessionListLineItemsParams` in the installed `stripe` SDK
+  (`node_modules/stripe/cjs/resources/Checkout/Sessions.d.ts`). Without the
+  expand, `line_item.price.product` is just a string id.
+- `drizzle-orm`'s `sql.join(chunks, separator?)` is real (confirmed in
+  `node_modules/drizzle-orm/sql/sql.d.ts`) — needed to generalize the
+  webhook's current single-CTE atomic insert (`recordOrder` in
+  `app/api/webhooks/stripe/route.ts`) from exactly one `order_items` row to
+  N rows in one statement: a dynamic `VALUES (...), (...), ...` list built
+  with `sql.join(...)`, still one atomic, idempotent statement (`ON
+  CONFLICT DO NOTHING` on the order makes a redelivered webhook a no-op for
+  all N rows at once).
+- Confirmed via the Next.js fork's `mutating-data.md`: Server Actions can
+  be invoked directly from a Client Component `onClick`, not just
+  `<form action>` — needed since a cart with a dynamic item count can't be
+  expressed as today's single `.bind(null, productId)` form action. **Not
+  yet verified:** whether `redirect()` inside a Server Action called this
+  way (imperative, not a form submission) behaves the same as the
+  documented form-action case — check this live before relying on it.
+
+**Design direction sketched (not finalized — needs its own plan-mode pass):**
+
+- Cart state client-side only (React Context + `localStorage`) — no buyer
+  accounts exist, so there's nowhere server-side to put it. Store a
+  denormalized snapshot per line (`productId`, `title`, `priceInCents`,
+  `imageUrl`, `quantity`) so the cart page renders without an extra fetch,
+  but `createCheckoutSession` must re-look-up the *current* price
+  server-side per `productId` and ignore whatever the client cart claims —
+  a tampered cart can't buy at a fake price.
+- New Client Component leaves, following the `CancelOrderButton` precedent
+  of isolating interactivity into small leaves rather than converting
+  whole pages: `AddToCartButton` (replaces `ProductCard`'s direct-buy
+  form), a cart-count indicator in `Nav`, and a `/cart` page (list, adjust
+  quantity, remove, checkout).
+- `lib/data.ts`: add `getProductsByIds(ids: string[])` (Drizzle `inArray`)
+  to re-validate every cart line against real, current, non-archived
+  product rows before creating the Stripe session.
+- `lib/actions.ts`: `createCheckoutSession(productId: string)` becomes
+  something like `createCheckoutSession(items: CartItem[])`, building N
+  `line_items` instead of one.
+- Webhook `recordOrder` reworked to call `listLineItems` (above) instead of
+  reading flat `session.metadata`, then bulk-insert via the `sql.join`
+  pattern above.
+- A `CartItem` Zod schema (`productId: string`, `quantity: positive int`),
+  probably in a new small `lib/cart.ts` shared by the client cart context
+  and the server action.
+
+**Open questions for when this is picked back up:** exact `/cart` page UX;
+whether `createCheckoutSession` stays in `lib/actions.ts` or moves to its
+own file (not a trust-boundary split like the admin actions — this is still
+fully public/buyer-facing — so likely just file-size hygiene either way);
+test plan for the cart context and multi-item webhook path (same
+`vi.hoisted`/`vi.mock` conventions as the rest of `__tests__/`).
+
+**Next step:** re-enter plan mode, verify the `redirect()`-from-`onClick`
+question above, then produce a proper staged plan (file list per stage,
+test annotations, commit messages, matching Stages A–E's format) and get it
+approved via `ExitPlanMode` before writing any code.
