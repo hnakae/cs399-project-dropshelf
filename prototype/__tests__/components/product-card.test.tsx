@@ -1,3 +1,6 @@
+// Tests for ProductCard: shows the product's title, description, and
+// formatted price, and wires the Buy button to a real submit action
+// (form + button type="submit"), not a plain link.
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { ProductCard } from "@/components/product-card";
@@ -11,6 +14,7 @@ const product: Product = {
     "A hand-thrown stoneware mug glazed in layered blues and greens, each one a little different from the last.",
   priceInCents: 3200,
   imageUrl: "https://picsum.photos/seed/dropshelf-product-1/600/600",
+  isArchived: false,
 };
 
 describe("ProductCard", () => {

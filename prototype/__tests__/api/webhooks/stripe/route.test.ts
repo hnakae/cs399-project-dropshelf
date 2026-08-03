@@ -1,3 +1,11 @@
+// Tests for POST /api/webhooks/stripe, covering signature verification and
+// order persistence on checkout.session.completed:
+//   - missing signature/webhook secret, or a signature Stripe rejects -> 400
+//   - a verified event persists orders + order_items as one atomic SQL
+//     statement, idempotent on redelivery (ON CONFLICT DO NOTHING)
+//   - a verified event missing product metadata is logged and skipped,
+//     not persisted
+//   - other verified event types are accepted without touching the database
 import { StringChunk, type SQL } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 

@@ -1,3 +1,5 @@
+// Tests for the lib/stripe client construction: throws a clear error when
+// STRIPE_SECRET_KEY is missing, builds a real Stripe client when it's set.
 import { afterEach, describe, expect, it, vi } from "vitest";
 import Stripe from "stripe";
 

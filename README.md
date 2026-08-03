@@ -98,7 +98,7 @@ without dropping into a database GUI.
 
 ## Sprint 4 Progress
 
-Sprint 4 deliverables — quality and persistence completion (in progress):
+Sprint 4 deliverables — quality and persistence completion:
 
 - [x] Kickoff scope, branch, and Canvas submission fields drafted (`docs/sprint-4-quality/kickoff.md`)
 - [x] Staged implementation plan written for Clerk auth, full product CRUD, order
@@ -107,12 +107,28 @@ Sprint 4 deliverables — quality and persistence completion (in progress):
 - [x] `drizzle-zod` schema validation added (`lib/db/validation.ts`) — Zod
       insert/select schemas derived directly from the Drizzle table
       definitions, so validation can't drift from the DB schema
-- [ ] Clerk authentication, replacing the shared-password Basic Auth gate on `/orders`
-- [ ] Admin product management (create/edit/archive) with validated input
-- [ ] Order cancel-and-refund action (Stripe refund + status update)
-- [ ] Automated test coverage for the above
-- [ ] Sprint 4 Canvas submission fields finalized
+- [x] Clerk authentication, replacing the shared-password Basic Auth gate on
+      `/orders` (also now gates `/admin`) — provisioned and live-verified:
+      signed-out requests to `/orders`/`/admin/*` redirect to `/sign-in`, the
+      Stripe webhook is unaffected. Completing an actual sign-in still needs
+      the admin account, which is created directly in the Clerk Dashboard
+      rather than by an agent
+- [x] Admin product management (create/edit/archive) with validated input
+      (`/admin/products`)
+- [x] Order cancel-and-refund action (Stripe refund + status update, with a
+      guard against double-refunding)
+- [x] Automated test coverage for the above — 56 tests passing
+- [x] Sprint 4 Canvas submission fields finalized (`docs/sprint-4-quality/kickoff.md`)
+- [x] `/checkout/success` 500-on-invalid-session bug fixed — a `session_id`
+      Stripe can't retrieve/verify now shows "Session not found" instead of
+      crashing (`app/checkout/success/page.tsx`)
 
-**In progress:** see `docs/sprint-4-quality/plan.md` for the staged rollout
-(Clerk auth → product CRUD → order refunds → tests). Nothing beyond the
-groundwork above has landed yet.
+**Completed feature slice:** signed-in admins can manage the product catalog
+(create/edit/archive) and cancel an order for an automatic Stripe refund,
+extending the persistence workflow from Create/Read to full CRUD plus a
+compensating transaction — all gated by real Clerk authentication in place of
+the Sprint 3 shared-password check. **Remaining:** creating the admin user
+directly in the Clerk Dashboard (intentionally the student's own step, not
+automated) is the one thing left before the signed-in admin flows can be
+walked through manually — everything else, including the auth gating itself,
+has been verified against a running app (see `docs/sprint-4-quality/kickoff.md`).

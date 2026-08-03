@@ -1,3 +1,4 @@
+// Tests for CreatorProfile: renders the creator's name, bio, and portrait.
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { CreatorProfile } from "@/components/creator-profile";
