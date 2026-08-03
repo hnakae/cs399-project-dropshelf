@@ -72,6 +72,11 @@ Signed-in users can manage products at `/admin/products` (create, edit, archive 
 independently of the `proxy.ts` route gate, since Server Actions are reachable even
 when their page isn't rendered.
 
+Cancelling an order retrieves its Stripe Checkout Session to find the underlying
+PaymentIntent, issues a full Stripe refund, and marks the order `status: "refunded"`
+in Postgres — a status transition, not general field-level order editing. It refuses
+to double-refund an already-`"refunded"` order (checked before calling Stripe).
+
 ## Testing
 
 The "buy" path — click Buy → Stripe Checkout → webhook → order confirmed — is the one flow this prototype actually has to get right, so it's covered by an automated suite rather than only manual clicking with the `4242 4242 4242 4242` test card.

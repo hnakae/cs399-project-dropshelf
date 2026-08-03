@@ -1,3 +1,4 @@
+import { CancelOrderButton } from "@/components/cancel-order-button";
 import { getOrders } from "@/lib/data";
 import { formatPrice } from "@/lib/utils";
 
@@ -26,9 +27,14 @@ export default async function OrdersPage() {
                   <h2 className="font-display text-2xl text-ink">
                     Order #{order.id}
                   </h2>
-                  <span className="font-mono text-xs uppercase tracking-[0.15em] text-ink-soft">
-                    {order.status}
-                  </span>
+                  <div className="flex items-center gap-4">
+                    <span className="font-mono text-xs uppercase tracking-[0.15em] text-ink-soft">
+                      {order.status}
+                    </span>
+                    {order.status !== "refunded" && (
+                      <CancelOrderButton orderId={order.id} />
+                    )}
+                  </div>
                 </div>
 
                 <dl className="mt-2 flex flex-wrap gap-x-6 gap-y-1 font-mono text-xs text-ink-soft">
