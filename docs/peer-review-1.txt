@@ -1,0 +1,134 @@
+1. Repository Reviewed
+Repository Assignment: Repository A
+Student or project name: hnakae, DropShelf
+GitHub repository URL: https://github.com/hnakae/cs399-project-dropshelf
+Branch reviewed: sprint-4-quality (requested branch matched exactly)
+Latest commit hash reviewed: cb4016b7fc6740040ed77a5a472b189e607c3451, dated 2026-08-02
+Approximate date and time reviewed: August 7, 2026, afternoon
+2. Initial Understanding
+What the project does. DropShelf is a storefront that lets an independent creator publish a profile page, list products, and take real payments through Stripe Checkout without going through a marketplace. It's a single Next.js App Router app backed by Postgres (Neon) through Drizzle ORM, and Stripe is the only external service.
+
+Who it supports. Two different audiences, and the repository is clear about the split. There's a public buyer who browses and purchases without signing in, and a signed-in admin who manages the catalog and can cancel orders. docs/sprint-4-quality/user-action-diagram.md makes this explicit by giving each one its own sequence diagram.
+
+Primary workflow currently implemented. A buyer loads /, the server component queries the products table, the buyer clicks Buy, and createCheckoutSession() in lib/actions.ts looks the product up in the database and creates a Stripe Checkout Session carrying productId, quantity, and unitPriceInCents in metadata. After payment, two independent things happen. The buyer gets redirected to /checkout/success?session_id=, which re-verifies the payment against Stripe instead of trusting the redirect, and Stripe asynchronously POSTs checkout.session.completed to /api/webhooks/stripe, which writes the orders and order_items rows. Sprint 4 added an authenticated admin surface on top of that: product create/edit/archive at /admin/products, plus an order cancel-and-refund action on /orders.
+
+What was hard to figure out. Not much about intent, since the README is unusually complete. The one thing I couldn't work out from the top-level README was how to configure authentication, because the root README's environment block is out of date (see §4). I had to open prototype/README.md to find the Clerk variables. I also couldn't tell what the current system looks like from the three required deliverable files (docs/architecture.md, docs/manual-verification.md, docs/ai-implementation-review.md), because all three are pointer files that still name Sprint 3 as authoritative. More on that in §5.
+
+3. Repository Organization
+What's organized well. The split between docs/ and prototype/ is clean, and the per-sprint documentation folders (sprint-1-definition/, sprint-2-prototype/, sprint-3-persistence/, sprint-4-quality/) mean earlier sprint evidence is preserved instead of overwritten. Inside prototype/, the layout is standard Next.js and easy to predict: app/ for routes, components/ for presentational components, lib/ for server logic, lib/db/ for schema, client, seed, and validation. The __tests__/ tree mirrors the source tree on purpose, so __tests__/lib/orders-actions.test.ts sits opposite lib/orders-actions.ts and finding a test takes no searching.
+
+Were important files easy to locate? Yes, with one exception. Because the three course-required documents at docs/*.md are redirect stubs, finding the current architecture takes two hops, and right now the second hop lands on a stale document.
+
+Were inappropriate artifacts excluded? Yes. I scanned both repositories for committed credentials, checking for sk_live/sk_test_/whsec_ patterns and Postgres connection strings, and found none. prototype/.gitignore correctly excludes /node_modules, /.next/, .env*, .vercel, /coverage, and *.pem, and it also excludes local agent tooling caches (.claude/, .agents/, skills-lock.json), which a lot of student repos miss. No .DS_Store, no committed build output, no stray logs.
+
+One organizational improvement. The per-sprint docs layout is a good decision, but it has a cost the repository is currently paying. The required files at the fixed paths are stubs, so they're only as accurate as their last update. I'd either make docs/architecture.md the real current document and move the historical copies into docs/history/, or keep the stub pattern but treat "update the three stubs" as a required step in each sprint's definition of done.
+
+4. README and Run Instructions
+Purpose: Yes. The one-line description at README.md:3 is concrete and tells you what the product is right away.
+
+Prerequisites and dependencies: Partially, and this is the README's one real defect. The root README.md:12-20 environment block lists ORDERS_VIEW_PASSWORD with the comment "Basic Auth password for the /orders view." That variable is dead. Sprint 4 replaced the Basic Auth gate with Clerk, and prototype/proxy.ts:1-9 now contains clerkMiddleware/createRouteMatcher with no reference to any password. Meanwhile the three variables that are now required (CLERK_SECRET_KEY, NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY, NEXT_PUBLIC_CLERK_SIGN_IN_URL) only appear in prototype/README.md:14-16 and are missing from the root README. Anyone following the root README literally will set a variable nothing reads, skip the three that matter, and hit a Clerk failure as soon as they touch /orders or /admin.
+
+Setup and run instructions: Yes, and they're good. cd prototype && npm install, then npm run dev, then buy with test card 4242 4242 4242 4242. prototype/README.md:22-26 even gives the exact provisioning sequence (vercel link, vercel integration add neon, vercel env pull), and the database scripts are named and explained (db:push, db:seed, db:studio).
+
+Expected behavior: Yes, and it's specific about something most projects get wrong. README.md:24-26 explains that the buy, checkout, and confirmation flow works without STRIPE_WEBHOOK_SECRET, but order persistence doesn't, because without stripe listen running Stripe has no route to localhost. That saves a new developer from a confusing "checkout worked but no order appeared" debugging session.
+
+Limitations and deferred work: Yes, and pretty honestly. README.md:130-134 says plainly that creating the admin user in the Clerk Dashboard hasn't been done, and that because of that the signed-in admin flows haven't been walked through manually. Declaring an incomplete verification step instead of quietly leaving it out is the right call.
+
+One README strength: The conditional-dependency explanation for STRIPE_WEBHOOK_SECRET at README.md:22-26. It documents what to set and what breaks if you don't, which is what onboarding docs are actually for.
+
+One recommended improvement: Replace the stale ORDERS_VIEW_PASSWORD line in the root README's env block with the three CLERK_* variables from prototype/README.md:14-16, or drop the root env block entirely and link to prototype/README.md as the single source of truth. Two env blocks that disagree is a maintenance trap, and the duplication is what let them drift apart in the first place.
+
+5. Architecture and Implementation Alignment
+Does the architecture document accurately describe the major components? For Sprint 3, yes, and thoroughly. docs/sprint-3-persistence/architecture.md is a strong document. It names each component with its file path, includes a route table, walks the data flow end to end, and has an explicit "Deviations" section explaining what was deliberately left alone and why. It also justifies its technology choices (SQL over NoSQL, Drizzle over Prisma) while conceding at lines 133-137 that Prisma's @relation syntax is arguably more explicit. Admitting the counter-argument to your own decision is rare in a student architecture doc.
+
+Does it reflect current responsibilities? No, docs/architecture.md:8 declares "Current (Sprint 3)" and points at the Sprint 3 document. But that document describes a system that no longer exists, in three specific and checkable ways:
+
+proxy.ts is described wrongly. sprint-3-persistence/architecture.md:86-90 says proxy.ts "Gates /orders with HTTP Basic Auth checked against ORDERS_VIEW_PASSWORD." The actual prototype/proxy.ts:1-9 is Clerk middleware protecting /orders(.*) and /admin(.*).
+The route table is missing the entire admin surface. sprint-3-persistence/architecture.md:97-103 lists five routes. The app now also serves /admin/products, /admin/products/new, /admin/products/[id]/edit, and /sign-in/[[...sign-in]]. None of them appear.
+Three new modules aren't documented anywhere in the "current" architecture. lib/admin.ts, lib/products-actions.ts, and lib/db/validation.ts don't exist in the document the required deliverable path points to.
+The same is true of the other two required files. docs/manual-verification.md:8 and docs/ai-implementation-review.md:8 both say "Current (Sprint 3)", and docs/sprint-4-quality/ contains kickoff.md, plan.md, and user-action-diagram.md but no manual-verification.md and no ai-implementation-review.md. The Sprint 4 work is real and substantial. The required documents just don't describe it yet.
+
+One specific observation supported by evidence: docs/sprint-3-persistence/architecture.md:168-171 lists as an open question that "/orders is gated by a shared-secret proxy.ts check, not real auth ... should be replaced by real auth (Clerk being the leading candidate)." That work is finished, and prototype/proxy.ts and prototype/lib/admin.ts prove it. But because the Sprint 4 architecture document was never written, the repository's authoritative architecture file still presents a solved problem as unsolved. Anyone reading only the required deliverable paths would badly undercount what this project got done.
+
+6. Testing and Verification Evidence
+What behavior is tested. I counted exactly 56 test cases across the __tests__/ tree, which matches the README's claim at README.md:120, so the number in the docs is accurate rather than aspirational. I couldn't execute npm test, since the snapshot ships without node_modules and installing would need network access, so I verified the count and the assertions by reading the files. Coverage spans the checkout action, webhook signature verification and persistence, the success-page branches, Zod validation, all three product actions, cancelOrder, requireAdmin(), and the presentational components.
+
+Meaningful assertions, and normal, boundary, and failure cases. Yes, and the failure cases are the strong part. The suite doesn't just cover happy paths. It tests a webhook request with no signature, a signature Stripe can't verify, a checkout.session.completed event missing product metadata, a duplicate webhook delivery for the same session (asserting no double-insert), an unknown product id, a session_id Stripe can't retrieve, a zero or negative price, an empty title, a non-URL image, and a malformed product id. lib/db/validation.ts:12 enforces .int().positive() on price and line 9 restricts ids to /^[a-z0-9-]+$/, and both have matching rejection tests.
+
+Does manual verification cover complete workflows? For Sprint 3, yes, and impressively. docs/sprint-3-persistence/manual-verification.md records real Stripe test payments forwarded through the Stripe CLI and then confirmed by querying the resulting rows in Postgres. Checking the effect on the database, not just the HTTP response, is the part people usually skip. For Sprint 4, no. docs/sprint-4-quality/kickoff.md:7 says signed-out gating was verified live but the signed-in admin walkthrough hasn't been exercised, because the Clerk admin account hasn't been created.
+
+Does the evidence increase confidence? Quite a bit, with one caveat: the newest and most consequential surface, admin mutations and refunds, is currently backed by automated tests with a mocked Clerk boundary and no live end-to-end run.
+
+One quality strength: the cancelOrder double-refund test. lib/orders-actions.ts:17-19 guards on order.status === "refunded" before calling Stripe, and the test asserts Stripe's refund API is never invoked in that case. Asserting that a side effect didn't happen is harder to write than asserting a return value, and this is the one bug in the feature set that costs actual money.
+
+One behavior that needs stronger testing or verification: cancelOrder isn't atomic across its two systems. lib/orders-actions.ts:35 calls stripe.refunds.create(), and only then do lines 37-40 update the row to status: "refunded". If the process dies or the database write fails in between, Stripe has issued a real refund but the order still reads as unrefunded, which means the line 17 guard would allow a second refund. The webhook path already solves this exact class of problem well (see §9), so the instinct is clearly there. This path just hasn't gotten it yet. A test that forces the update to reject and asserts the resulting state would at least document the exposure, even if the fix gets deferred.
+
+7. AI-Assisted Engineering Evidence
+docs/ai-implementation-review.md is a stub pointing at docs/sprint-3-persistence/ai-implementation-review.md, and there's no Sprint 4 equivalent, so what I could assess covers the persistence work rather than the Clerk, CRUD, and refund work.
+
+Does it explain how AI contributed, and what was accepted versus rejected? For Sprint 3, yes. The document is organized around what was accepted versus rejected or postponed, and it explicitly records an engineering decision made independently of AI's default framing, which is the distinction this assignment is asking about. It's a record of judgment rather than a list of prompts.
+
+Does it demonstrate retained engineering responsibility? The strongest evidence is actually outside that file, in the code comments. app/api/webhooks/stripe/route.ts:49-54 explains that drizzle-orm/neon-http throws "No transactions support" on db.transaction(), so atomicity comes from making the write a single CTE statement instead. That's a driver-specific constraint you only write down after hitting it and thinking through the alternative. It reads like something understood rather than pasted. prototype/README.md:104 does something similar by documenting what was deliberately not tested (proxy.ts, because its logic is now almost entirely Clerk's own code) with the reasoning attached. Declaring and defending a coverage boundary is a sign of someone who owns the test suite instead of accepting whatever got generated.
+
+One question. Sprint 4 had the largest AI-assisted scope of any sprint here, and docs/sprint-4-quality/plan.md lays out a staged plan for Clerk, full CRUD, refunds, and coverage. But it produced no ai-implementation-review.md. What did you reject or revise during the Clerk migration specifically?
+
+8. Repository History and Project Evolution
+Observation about the engineering story. Even without commit access the evolution is easy to follow from the documentation structure, which is sort of the point of that structure. The README's per-sprint checklists trace a clear arc: Sprint 1 definition with no code, Sprint 2 a working prototype with a hardcoded lib/data.ts array, Sprint 3 replacing that array with Postgres and turning a console.log into durable rows, Sprint extending Create and Read into full CRUD plus a compensating refund transaction behind real authentication.
+
+The better part is that the arc is self-critical rather than promotional. Each sprint's architecture document ends with open questions, and the next sprint visibly closes them. sprint-3-persistence/architecture.md:158-171 lists four carried-forward items, including the /checkout/success 500 bug, missing /orders test coverage, and the shared-secret gate, and all four get addressed in Sprint 4 per README.md:99-134. The docs/sprint-3-persistence/updates/ folder, which records mid-sprint changes as individual documents (webhook-atomic-write.md, orders-view.md, orders-view-auth-gate.md), means even work that happened after a sprint doc was written stays traceable. A new engineer could reconstruct not only what was built but why each decision was made, which is what history is supposed to give you.
+
+9. Engineering Strengths
+Strength 1: the webhook's idempotent, atomic single-statement write.
+
+What I observed: app/api/webhooks/stripe/route.ts:55-65 writes the orders row and its order_items row in one parameterized SQL statement, using a WITH inserted_order AS (INSERT ... ON CONFLICT (stripe_checkout_session_id) DO NOTHING RETURNING id) INSERT INTO order_items ... SELECT ... FROM inserted_order CTE, rather than two sequential db.insert() calls.
+
+Evidence: the code itself, the reasoning comment at lines 49-54, the design note at docs/sprint-3-persistence/updates/webhook-atomic-write.md, and a test asserting a redelivered webhook doesn't double-insert.
+
+Why it improves the project: payment webhooks get retried by design. Stripe redelivers on non-2xx responses and occasionally duplicates, so a naive handler produces either duplicate orders or orphaned rows, and both corrupt financial records. This handles both hazards at once. ON CONFLICT DO NOTHING makes redelivery a complete no-op, because an empty CTE means the order_items insert selects from nothing, and running as a single statement removes the crash window between the two inserts. What makes it more than a lucky idiom is that the constraint behind it, neon-http having no transaction support, is written into the comment. The next person to touch this knows why db.transaction() wasn't used and won't "simplify" it back into a bug.
+
+Strength 2: authorization enforced at the action boundary, not only at the route boundary.
+
+What I observed: every mutating server action calls requireAdmin() independently. That's products-actions.ts:11, 28, 44 and orders-actions.ts:11, even though proxy.ts:3-8 already protects /admin(.*) and /orders(.*). app/orders/page.tsx:9 does the same.
+
+Evidence: the call sites above, the rationale in prototype/README.md:71-73 ("Server Actions are reachable even when their page isn't rendered"), and the origin story at docs/sprint-4-quality/kickoff.md:7, where live testing surfaced the gap.
+
+Why it improves the project: Next.js Server Actions are POST endpoints with generated ids, and you can invoke them directly without ever loading the page that renders them. A project that gates only in middleware has an authorization hole that clicking through the UI will never reveal. Enforcing at both layers means a future refactor of the route matcher, or a Clerk API change like the one this project already absorbed, degrades safely instead of silently exposing every mutation. The redundancy also wasn't theoretical caution. It came out of a near-miss and then got written down so the next person understands why it looks redundant. The test discipline backs it up too: products-actions.test.ts asserts each action calls requireAdmin() and rejects invalid input before touching the database, so a regression fails the suite instead of shipping.
+
+10. Recommendations or Engineering Questions
+Recommendation 1: write the Sprint 4 versions of the three required documents and repoint the stubs.
+
+The issue: docs/architecture.md, docs/manual-verification.md, and docs/ai-implementation-review.md all declare "Current (Sprint 3)" at architecture.md:8, manual-verification.md:8, and ai-implementation-review.md:8, and docs/sprint-4-quality/ contains no architecture, manual-verification, or AI-review document.
+
+Evidence: the three specific mismatches in §5. proxy.ts documented as Basic Auth when it's Clerk middleware, a route table missing the four /admin and /sign-in routes, and three undocumented modules (lib/admin.ts, lib/products-actions.ts, lib/db/validation.ts).
+
+Why it matters: these are the exact paths a reviewer, a grader, or a new engineer opens first. Right now they describe a system one sprint behind the code, so the project's most impressive work (the auth migration, full CRUD, the refund compensating transaction) is invisible at the front door. Worse, the architecture doc actively lists a solved problem as an open question.
+
+Scoped next step: create docs/sprint-4-quality/architecture.md by copying the Sprint 3 document and editing three sections. The proxy.ts component description, the route table, and a new "Admin surface" section covering lib/admin.ts, lib/products-actions.ts, and lib/db/validation.ts. Then update the three stubs to say "Current (Sprint 4)". The Sprint 3 document is well-structured enough that this is an edit, not a rewrite.
+
+Recommendation 2: make requireAdmin() check identity, not just authentication.
+
+The issue: lib/admin.ts:3-9 treats any signed-in Clerk user as an admin. It only checks that userId is non-null. prototype/README.md:60-62 acknowledges this ("any signed-in user counts as admin") on the premise that there's exactly one account and no public sign-up. But docs/sprint-4-quality/kickoff.md:7 says disabling public sign-up is still open.
+
+Evidence: those two files read together, plus the blast radius. orders-actions.ts:35 calls stripe.refunds.create(), and products-actions.ts:43-53 can archive products out of the storefront.
+
+Why it matters: Clerk instances allow public sign-up by default. Until that setting changes, the documented security model and the deployed one disagree, and the gap isn't read-only. A self-registered account reaches real Stripe refunds. This is a configuration state rather than a code bug, which is exactly the kind of thing that's easy to leave undone.
+
+Scoped next step: two small changes, either of which closes it. Disable public sign-up in the Clerk Dashboard, which is already planned, and add a defense-in-depth check in code. Compare userId against an ADMIN_USER_ID environment variable, or check a Clerk publicMetadata.role === "admin" claim, so the code enforces the invariant the README already asserts instead of depending on a dashboard toggle staying flipped. __tests__/lib/admin.test.ts already mocks the Clerk boundary, so a "signed in but not the admin" rejection test costs a few lines.
+
+Question 3: What happens to a refund if the status update fails?
+
+orders-actions.ts:35-40 issues the Stripe refund and then writes status: "refunded". Since the double-refund guard at line 17 reads that same status, a failure in between leaves an order that's been refunded at Stripe but is still eligible to be refunded again. Was this considered and accepted as acceptable risk for the current scope? The webhook path solved the identical two-system-consistency problem carefully, as I described in §9, so I suspect this is a scope call rather than an oversight. But it isn't written down anywhere, and a short note in the Sprint 4 architecture's "Deviations" section would turn it into a documented decision instead of an apparent gap. If you wanted to close it cheaply, reversing the order would help: mark the row "refunding", call Stripe, then mark "refunded". That makes the failure mode visible instead of silent.
+
+11. Highest-Priority Recommendation
+Write the Sprint 4 architecture, manual verification, and AI implementation review documents, and repoint the three stub files.
+
+The engineering here is strong. An idempotent atomic webhook write with the driver constraint documented, dual-layer authorization discovered through live testing, schema-derived validation, 56 tests weighted toward failure cases, and an explicit statement of what was deliberately left untested and why. Almost none of that is visible from docs/architecture.md, which currently tells you /orders is guarded by a shared password and that replacing it with real auth is an open question, something prototype/proxy.ts disproves in nine lines. The gap isn't cosmetic. It's the difference between a reviewer concluding "this project finished Sprint 3 and started Sprint 4" and "this project shipped authenticated CRUD with a compensating refund transaction and tested it."
+
+It also has the best effort-to-benefit ratio available before final submission. The Sprint 3 architecture document is already very good, with clear component sections, a route table, a data-flow walkthrough, and an honest deviations section. Sprint 4 needs an edited copy of it, not a new document, and the raw material for the other two files already exists in kickoff.md and plan.md. A couple of hours of writing makes a sprint's worth of real engineering legible and closes the last course-required deliverable gap. It'll probably surface the requireAdmin() scoping question on its own, too, since writing the architecture forces you to re-read proxy.ts, lib/admin.ts, and the route table.
+
+12. Final Reviewer Summary
+DropShelf handles the hard parts well. The Stripe webhook is repeatable and atomic under redelivery through a single CTE statement, with the constraint that forced that design recorded in a comment so it survives future refactoring. Authorization is enforced at both the middleware and the individual server-action boundary, a distinction found through live testing rather than assumption. Validation is derived from the schema so it can't drift. The 56-test suite leans toward the failure cases that actually matter, like unverifiable signatures, duplicate deliveries, missing metadata, and double refunds, and it comes with a justified statement of what's deliberately not tested. The documentation. Each sprint's architecture ends with open questions and the next sprint closes them.
+
+The most important risk isn't in the code, it's in the map. All three course-required documents still declare Sprint 3 authoritative, and the Sprint 3 architecture describes an authentication mechanism the code replaced, so the repository's front door understates the project by a full sprint. Second to that, requireAdmin() currently grants admin access to any signed-in user while public sign-up is, by the project's own status note, still enabled. That's a small configuration gap with a real blast radius, since the admin surface issues Stripe refunds.
+
+Could another engineer understand, run, verify, and continue this project? Understand and continue, yes, easily, as long as they read README.md and the per-sprint docs rather than stopping at the required deliverable paths. Run, yes, but only after finding the Clerk variables in README.md, because the root README's environment block is stale. Verify, yes. The automated suite is real and the Sprint 3 manual verification checks database state rather than just HTTP responses, though the Sprint 4 admin flows are still automated-only pending the Clerk account creation the student has already flagged. Close the documentation gap and this is a repository I'd be comfortable being handed.
