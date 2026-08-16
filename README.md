@@ -66,8 +66,9 @@ DropShelf lets individual creators set up a public profile page, list products f
 
 > Sprint 1–4 doc paths referenced below (`docs/sprint-1-definition/`, etc.) live on
 > each sprint's own branch (`sprint-1`, `sprint-2`, `sprint-3`, `sprint-4-quality`) on
-> GitHub, not in this branch's `docs/` folder — only `docs/sprint-5-completion/` ships
-> here.
+> GitHub, not in this branch's `docs/` folder — only this sprint's four files
+> (`architecture.md`, `manual-verification.md`, `ai-implementation-review.md`,
+> `plan.md`) ship directly in `docs/` here.
 
 ## Sprint 1 Progress
 
