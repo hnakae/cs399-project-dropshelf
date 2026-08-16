@@ -14,6 +14,9 @@ DATABASE_URL=            # Postgres connection string (Neon, via Vercel Marketpl
 CLERK_SECRET_KEY=                     # provisioned by `vercel integration add clerk`
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=    # provisioned by `vercel integration add clerk`
 NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+ADMIN_USER_ID=                        # the Clerk user id (see the Dashboard's Users
+                                       # tab) of the one admin account -- requireAdmin()
+                                       # rejects every other signed-in user
 ```
 
 `DATABASE_URL` and friends (`PGHOST`, `PGUSER`, etc.) are provisioned automatically once
@@ -57,12 +60,15 @@ for the schema and the reasoning behind the SQL-over-NoSQL and Drizzle-over-Pris
 
 `/orders` lists every persisted order and its line items, read from Postgres on every
 request (not cached — see `docs/sprint-3-persistence/updates/orders-view.md`). It's
-gated by [Clerk](https://clerk.com) authentication (see `proxy.ts`) — any signed-in
-user counts as admin, since this is a single-shop-owner app with one account created
-directly in the Clerk Dashboard (no public sign-up). This replaced the Sprint 3 shared-
-password Basic Auth gate (`docs/sprint-3-persistence/updates/orders-view-auth-gate.md`)
-now that the app needs real per-action authorization for the admin product/order
-mutations added in Sprint 4, not just a read-only view gate.
+gated by [Clerk](https://clerk.com) authentication (see `proxy.ts`), plus an identity
+check — `requireAdmin()` only accepts the one Clerk user id in `ADMIN_USER_ID`, not any
+signed-in user. This is defense-in-depth: this is still a single-shop-owner app with one
+intended admin account, but Clerk instances allow public sign-up by default, so being
+signed in was never sufficient on its own — see `lib/admin.ts`. This replaced the Sprint
+3 shared-password Basic Auth gate
+(`docs/sprint-3-persistence/updates/orders-view-auth-gate.md`) now that the app needs
+real per-action authorization for the admin product/order mutations added in Sprint 4,
+not just a read-only view gate.
 
 ## Admin
 

@@ -4,6 +4,19 @@ A direct-to-consumer storefront platform for independent creators to sell digita
 
 ## Getting Started
 
+### Prerequisites
+
+- **Node.js 22+** — developed and tested against v22.22.1. No `engines` field is
+  enforced in `package.json`, but this is the version actually used, not a guess.
+- **npm** — the repo ships `prototype/package-lock.json`; don't install with yarn or
+  pnpm instead, or you'll get a second, drifting lockfile.
+- Accounts for the external services this app depends on (free/test tiers are enough):
+  [Stripe](https://dashboard.stripe.com/register) (test mode), a Postgres database
+  (this project uses [Neon](https://neon.tech) via the Vercel Marketplace), and
+  [Clerk](https://clerk.com) (also via the Vercel Marketplace) for admin auth.
+
+### Quick start
+
 ```bash
 cd prototype
 npm install
@@ -16,14 +29,18 @@ STRIPE_SECRET_KEY=       # test-mode secret key from https://dashboard.stripe.co
 STRIPE_WEBHOOK_SECRET=   # from `stripe listen --forward-to localhost:3000/api/webhooks/stripe`
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 DATABASE_URL=            # Postgres (Neon via Vercel Marketplace) — see prototype/README.md
-ORDERS_VIEW_PASSWORD=    # Basic Auth password for the /orders view — see prototype/README.md
+CLERK_SECRET_KEY=                     # provisioned by `vercel integration add clerk`
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=    # provisioned by `vercel integration add clerk`
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+ADMIN_USER_ID=            # the one admin's Clerk user id — see prototype/README.md
 ```
 
-`STRIPE_SECRET_KEY` and `DATABASE_URL` are required — the app throws on startup without
-`STRIPE_SECRET_KEY` (`lib/stripe.ts`), and the storefront/checkout/webhook all read from
-Postgres now (`lib/db/`). `STRIPE_WEBHOOK_SECRET` is only needed to receive webhook
-events locally via the [Stripe CLI](https://docs.stripe.com/stripe-cli); the buy →
-checkout → confirmation flow works without it, but order persistence does not.
+`STRIPE_SECRET_KEY`, `DATABASE_URL`, and `ADMIN_USER_ID` are required — the app throws
+on startup without `STRIPE_SECRET_KEY` (`lib/stripe.ts`) or `ADMIN_USER_ID`
+(`lib/admin.ts`), and the storefront/checkout/webhook all read from Postgres
+(`lib/db/`). `STRIPE_WEBHOOK_SECRET` is only needed to receive webhook events locally
+via the [Stripe CLI](https://docs.stripe.com/stripe-cli); the buy → checkout →
+confirmation flow works without it, but order persistence does not.
 
 ```bash
 npm run dev
@@ -46,6 +63,12 @@ This course uses a five-sprint sequence. Each sprint adds project evidence and g
 ## Overview
 
 DropShelf lets individual creators set up a public profile page, list products for sale, and accept payments directly from buyers via Stripe. The goal is a lightweight alternative to large marketplaces — creators own their storefront, keep more revenue, and sell on their own terms.
+
+> Sprint 1–4 doc paths referenced below (`docs/sprint-1-definition/`, etc.) live on
+> each sprint's own branch (`sprint-1`, `sprint-2`, `sprint-3`, `sprint-4-quality`) on
+> GitHub, not in this branch's `docs/` folder — only this sprint's four files
+> (`architecture.md`, `manual-verification.md`, `ai-implementation-review.md`,
+> `plan.md`) ship directly in `docs/` here.
 
 ## Sprint 1 Progress
 
@@ -122,6 +145,12 @@ Sprint 4 deliverables — quality and persistence completion:
 - [x] `/checkout/success` 500-on-invalid-session bug fixed — a `session_id`
       Stripe can't retrieve/verify now shows "Session not found" instead of
       crashing (`app/checkout/success/page.tsx`)
+- [x] Architecture updated to reflect Clerk auth, full product CRUD, and the
+      refund action (`docs/sprint-4-quality/architecture.md`)
+- [x] Manual, live verification of Clerk route gating and the invalid-session
+      fix, with the pending signed-in walkthrough tracked honestly as open
+      (`docs/sprint-4-quality/manual-verification.md`)
+- [x] AI review of the Sprint 4 work documented (`docs/sprint-4-quality/ai-implementation-review.md`)
 
 **Completed feature slice:** signed-in admins can manage the product catalog
 (create/edit/archive) and cancel an order for an automatic Stripe refund,
