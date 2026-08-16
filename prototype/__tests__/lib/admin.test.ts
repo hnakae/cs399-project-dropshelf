@@ -3,7 +3,6 @@
 // defense-in-depth identity check, not just an authentication check), and
 // resolves the user id when it matches.
 
-
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { auth } = vi.hoisted(() => ({ auth: vi.fn() }));
