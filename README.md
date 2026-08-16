@@ -122,6 +122,12 @@ Sprint 4 deliverables — quality and persistence completion:
 - [x] `/checkout/success` 500-on-invalid-session bug fixed — a `session_id`
       Stripe can't retrieve/verify now shows "Session not found" instead of
       crashing (`app/checkout/success/page.tsx`)
+- [x] Architecture updated to reflect Clerk auth, full product CRUD, and the
+      refund action (`docs/sprint-4-quality/architecture.md`)
+- [x] Manual, live verification of Clerk route gating and the invalid-session
+      fix, with the pending signed-in walkthrough tracked honestly as open
+      (`docs/sprint-4-quality/manual-verification.md`)
+- [x] AI review of the Sprint 4 work documented (`docs/sprint-4-quality/ai-implementation-review.md`)
 
 **Completed feature slice:** signed-in admins can manage the product catalog
 (create/edit/archive) and cancel an order for an automatic Stripe refund,
