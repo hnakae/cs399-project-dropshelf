@@ -4,6 +4,19 @@ A direct-to-consumer storefront platform for independent creators to sell digita
 
 ## Getting Started
 
+### Prerequisites
+
+- **Node.js 22+** — developed and tested against v22.22.1. No `engines` field is
+  enforced in `package.json`, but this is the version actually used, not a guess.
+- **npm** — the repo ships `prototype/package-lock.json`; don't install with yarn or
+  pnpm instead, or you'll get a second, drifting lockfile.
+- Accounts for the external services this app depends on (free/test tiers are enough):
+  [Stripe](https://dashboard.stripe.com/register) (test mode), a Postgres database
+  (this project uses [Neon](https://neon.tech) via the Vercel Marketplace), and
+  [Clerk](https://clerk.com) (also via the Vercel Marketplace) for admin auth.
+
+### Quick start
+
 ```bash
 cd prototype
 npm install
@@ -16,14 +29,18 @@ STRIPE_SECRET_KEY=       # test-mode secret key from https://dashboard.stripe.co
 STRIPE_WEBHOOK_SECRET=   # from `stripe listen --forward-to localhost:3000/api/webhooks/stripe`
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 DATABASE_URL=            # Postgres (Neon via Vercel Marketplace) — see prototype/README.md
-ORDERS_VIEW_PASSWORD=    # Basic Auth password for the /orders view — see prototype/README.md
+CLERK_SECRET_KEY=                     # provisioned by `vercel integration add clerk`
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=    # provisioned by `vercel integration add clerk`
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+ADMIN_USER_ID=            # the one admin's Clerk user id — see prototype/README.md
 ```
 
-`STRIPE_SECRET_KEY` and `DATABASE_URL` are required — the app throws on startup without
-`STRIPE_SECRET_KEY` (`lib/stripe.ts`), and the storefront/checkout/webhook all read from
-Postgres now (`lib/db/`). `STRIPE_WEBHOOK_SECRET` is only needed to receive webhook
-events locally via the [Stripe CLI](https://docs.stripe.com/stripe-cli); the buy →
-checkout → confirmation flow works without it, but order persistence does not.
+`STRIPE_SECRET_KEY`, `DATABASE_URL`, and `ADMIN_USER_ID` are required — the app throws
+on startup without `STRIPE_SECRET_KEY` (`lib/stripe.ts`) or `ADMIN_USER_ID`
+(`lib/admin.ts`), and the storefront/checkout/webhook all read from Postgres
+(`lib/db/`). `STRIPE_WEBHOOK_SECRET` is only needed to receive webhook events locally
+via the [Stripe CLI](https://docs.stripe.com/stripe-cli); the buy → checkout →
+confirmation flow works without it, but order persistence does not.
 
 ```bash
 npm run dev
