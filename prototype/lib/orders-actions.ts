@@ -32,6 +32,16 @@ export async function cancelOrder(orderId: number) {
     );
   }
 
+  // Mark the row before calling Stripe, not after: if the refund succeeds but
+  // this process dies before the final "refunded" write below, the order is
+  // left in "refunding" -- a visible, stuck state -- instead of silently
+  // still reading "paid" and passing the already-refunded guard above on a
+  // retry, which would attempt a second refund at Stripe for the same order.
+  await getDb()
+    .update(orders)
+    .set({ status: "refunding" })
+    .where(eq(orders.id, orderId));
+
   await stripe.refunds.create({ payment_intent: paymentIntentId });
 
   await getDb()
