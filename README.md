@@ -47,6 +47,11 @@ This course uses a five-sprint sequence. Each sprint adds project evidence and g
 
 DropShelf lets individual creators set up a public profile page, list products for sale, and accept payments directly from buyers via Stripe. The goal is a lightweight alternative to large marketplaces — creators own their storefront, keep more revenue, and sell on their own terms.
 
+> Sprint 1–4 doc paths referenced below (`docs/sprint-1-definition/`, etc.) live on
+> each sprint's own branch (`sprint-1`, `sprint-2`, `sprint-3`, `sprint-4-quality`) on
+> GitHub, not in this branch's `docs/` folder — only `docs/sprint-5-completion/` ships
+> here.
+
 ## Sprint 1 Progress
 
 Sprint 1 deliverables — project definition:
