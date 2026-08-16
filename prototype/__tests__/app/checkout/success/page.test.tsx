@@ -5,6 +5,7 @@
 //   2. `session_id` Stripe can't retrieve/verify -> "Session not found"
 //   3. Session found but `payment_status` isn't "paid" -> "Payment not completed"
 //   4. Session found and paid                   -> "Order confirmed"
+
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

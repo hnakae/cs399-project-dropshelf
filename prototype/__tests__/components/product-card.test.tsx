@@ -1,6 +1,7 @@
 // Tests for ProductCard: shows the product's title, description, and
 // formatted price, and wires the Buy button to a real submit action
 // (form + button type="submit"), not a plain link.
+
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { ProductCard } from "@/components/product-card";

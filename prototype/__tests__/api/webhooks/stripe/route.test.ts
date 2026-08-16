@@ -6,6 +6,7 @@
 //   - a verified event missing product metadata is logged and skipped,
 //     not persisted
 //   - other verified event types are accepted without touching the database
+
 import { StringChunk, type SQL } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
